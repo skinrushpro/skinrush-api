@@ -57,6 +57,7 @@ steam-login-bridge/
 # Ignore uploads or local test data
 uploads/
 public/uploads/
+images/blog/
 
 # Ignore sensitive config (optional if applicable)
 config/config.js
