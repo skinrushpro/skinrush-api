@@ -25,6 +25,7 @@ coverage/
 # dotenv environment variables
 .env
 .env.*    # include variant files like .env.local, .env.production
+.env.*.local
 
 # Database files (SQLite etc.)
 *.sqlite
