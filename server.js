@@ -54,6 +54,24 @@ app.get('/api/hello', (req, res) => {
   res.json({ message: 'Backend is working!' });
 });
 
+app.get('/api/test-db', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+
+    res.json({
+      success: true,
+      message: 'Database connected successfully'
+    });
+  } catch (error) {
+    console.error('❌ DB connection error:', error.message);
+
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ✅ Skin data from DB
 app.get('/api/skins', async (req, res) => {
   try {
