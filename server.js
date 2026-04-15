@@ -123,6 +123,27 @@ app.get('/api/item', async (req, res) => {
   }
 });
 
+app.post('/api/skins/filter', async (req, res) => {
+  try {
+    const { weapon } = req.body;
+
+    const [results] = await sequelize.query(`
+      SELECT *
+      FROM skins
+      WHERE weapon_name = :weapon
+      LIMIT 20
+    `, {
+      replacements: { weapon }
+    });
+
+    res.json(results);
+
+  } catch (error) {
+    console.error('❌ Filter error:', error.message);
+    res.status(500).json({ error: 'Filter failed' });
+  }
+});
+
 // ✅ Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
