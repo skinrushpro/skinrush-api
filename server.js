@@ -84,11 +84,21 @@ app.get('/api/test-db', async (req, res) => {
 // ✅ Skin data from DB
 app.get('/api/skins', async (req, res) => {
   try {
+    console.log('Fetching skins...');
+
     const skins = await Skin.findAll();
+
+    console.log('Returned:', skins.length);
+
     res.json(skins);
+
   } catch (err) {
-    console.error('❌ Error fetching skins:', err.message);
-    res.status(500).json({ error: 'Failed to fetch skins' });
+    console.error('❌ FULL ERROR:', err);
+
+    res.status(500).json({
+      error: 'Failed to fetch skins',
+      details: err.message
+    });
   }
 });
 
