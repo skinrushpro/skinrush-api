@@ -62,3 +62,7 @@ images/blog/
 
 # Ignore sensitive config (optional if applicable)
 config/config.js
+
+# Temp Files
+.tmp.driveupload/
+*.tmp
