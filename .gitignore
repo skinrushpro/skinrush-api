@@ -66,3 +66,6 @@ config/config.js
 # Temp Files
 .tmp.driveupload/
 *.tmp
+
+# Local Git worktrees
+.worktrees/
