@@ -4,7 +4,7 @@ import sequelize from '../db.js';
 export const Skin = sequelize.define('Skin', {
 
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.STRING,
     primaryKey: true,
     field: 'skin_id'
   },

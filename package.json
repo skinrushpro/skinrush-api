@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"No tests yet\" && exit 0",
+    "test": "node --test \"test/**/*.test.js\"",
+    "validate:data": "node scripts/validate-database-files.js",
     "dev": "wix dev",
     "build": "wix build",
     "release": "wix release"
@@ -23,6 +24,7 @@
     "sequelize": "^6.37.7"
   },
   "devDependencies": {
-    "@wix/cli": "^1.1.83"
+    "@wix/cli": "^1.1.83",
+    "csv-parse": "^6.1.0"
   }
 }
