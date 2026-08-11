@@ -5,13 +5,16 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test \"test/**/*.test.js\"",
+    "test": "node --import tsx --test \"test/**/*.test.js\" \"test/**/*.test.ts\"",
     "validate:data": "node scripts/validate-database-files.js",
-    "dev": "wix dev",
-    "build": "wix build",
-    "release": "wix release"
+    "dev": "wix app dev",
+    "build": "wix app build",
+    "release": "wix app release"
   },
   "dependencies": {
+    "@wix/dashboard": "^1.3.47",
+    "@wix/design-system": "^1.154.0",
+    "@wix/editor": "^1.356.0",
     "@wix/members": "^1.0.229",
     "@wix/pricing-plans": "^1.0.129",
     "@wix/sdk": "^1.15.17",
@@ -21,10 +24,17 @@
     "express": "^4.18.2",
     "openid-client": "^6.4.2",
     "pg": "^8.20.0",
+    "react-to-webcomponent": "^2.0.0",
     "sequelize": "^6.37.7"
   },
   "devDependencies": {
-    "@wix/cli": "^1.1.83",
-    "csv-parse": "^6.1.0"
+    "@types/react": "^16.0.0",
+    "@types/react-dom": "^16.0.0",
+    "@wix/cli": "^1.1.236",
+    "@wix/cli-app": "^1.1.236",
+    "csv-parse": "^6.1.0",
+    "react": "16.14.0",
+    "react-dom": "16.14.0",
+    "tsx": "^4.23.12"
   }
 }

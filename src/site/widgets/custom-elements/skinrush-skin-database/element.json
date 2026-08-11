@@ -1,0 +1,21 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/custom-element.json",
+  "id": "686ce16f-e662-4892-9e91-61841de72b88",
+  "name": "SkinRush Skin Database",
+  "width": {
+    "defaultWidth": 1200,
+    "allowStretch": true
+  },
+  "height": {
+    "defaultHeight": 1200
+  },
+  "installation": {
+    "autoAddToSite": false
+  },
+  "presets": [
+    {
+      "id": "6c37fc2b-4e2b-4a48-a749-b909dfb84d4b",
+      "thumbnailUrl": "../../../../assets/skinrush-skin-database/thumbnail.png"
+    }
+  ]
+}
