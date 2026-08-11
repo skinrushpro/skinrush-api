@@ -7,17 +7,19 @@ import { createCollectionsRouter } from './routes/collections.js';
 import membersRoute from './routes/members.js';
 import steamRoutes from './routes/steam.js';
 
-const corsOptions = {
-  origin: 'https://www.skinrush.pro',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
-};
-
-const allowedOrigins = [
+const allowedOrigins = new Set([
   'https://www.skinrush.pro',
   'https://editor.wix.com',
   'https://preview.wixsite.com'
-];
+]);
+
+const corsOptions = {
+  origin(origin, callback) {
+    callback(null, !origin || allowedOrigins.has(origin));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+};
 
 export function createApp({
   sequelize,
@@ -30,26 +32,7 @@ export function createApp({
   const marketCache = new Map();
   const cacheDurationMs = 10 * 60 * 1000;
 
-  app.options('*', cors(corsOptions));
   app.use(cors(corsOptions));
-
-  app.use((req, res, next) => {
-    const origin = req.headers.origin;
-
-    if (allowedOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
-    }
-
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    res.header('Access-Control-Allow-Credentials', 'true');
-
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(204);
-    }
-
-    next();
-  });
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

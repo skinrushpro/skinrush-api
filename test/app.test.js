@@ -36,6 +36,50 @@ test('GET /api/hello returns the backend health message', async () => {
   assert.deepEqual(await response.json(), { message: 'Backend is working!' });
 });
 
+for (const origin of [
+  'https://www.skinrush.pro',
+  'https://editor.wix.com',
+  'https://preview.wixsite.com'
+]) {
+  test(`CORS allows ${origin}`, async () => {
+    const baseUrl = await startApp();
+    const response = await fetch(`${baseUrl}/api/hello`, {
+      headers: { Origin: origin }
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('access-control-allow-origin'), origin);
+    assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
+  });
+}
+
+test('CORS omits allow-origin for unknown browser origins', async () => {
+  const baseUrl = await startApp();
+  const response = await fetch(`${baseUrl}/api/hello`, {
+    headers: { Origin: 'https://attacker.example' }
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
+});
+
+test('CORS preflight uses the Wix allowlist', async () => {
+  const baseUrl = await startApp();
+  const response = await fetch(`${baseUrl}/api/collections`, {
+    method: 'OPTIONS',
+    headers: {
+      Origin: 'https://editor.wix.com',
+      'Access-Control-Request-Method': 'GET'
+    }
+  });
+
+  assert.equal(response.status, 204);
+  assert.equal(
+    response.headers.get('access-control-allow-origin'),
+    'https://editor.wix.com'
+  );
+});
+
 test('GET /api/collections returns the service result with parsed query values', async () => {
   let receivedQuery;
   const expected = {
