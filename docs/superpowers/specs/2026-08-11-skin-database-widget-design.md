@@ -65,6 +65,13 @@ Confirmed live data facts:
   `souvenir_package`.
 - The live relationship data contains duplicate and orphaned links.
 
+The schema names used by this specification were verified against the live
+database on 11 August 2026. `skins.weapon_name`, `skins.rarity_name`, and
+`collections.collection_id` exist exactly as written. The stable identifier
+`the_falchion_collection` resolves to `The Falchion Collection`. The live
+database remains authoritative; implementation must re-check rather than alter
+the schema if documentation and the database ever differ.
+
 The query design will prevent duplicate skin rows and ignore links whose
 related case or collection is missing. It will not fabricate missing
 relationships or repair source data in this task.
@@ -76,7 +83,18 @@ relationships or repair source data in this task.
 `GET /api/skins` remains the only skin-search endpoint. Requests without
 filtering or pagination retain the existing successful array response for
 compatibility. Filtered or paginated requests use the same endpoint and return
-skin arrays with a total-count response header.
+skin arrays with the response header:
+
+```text
+X-Total-Count
+```
+
+The API does not introduce a JSON envelope solely for pagination. The CORS
+configuration exposes the count header to the cross-origin Wix frontend with:
+
+```text
+Access-Control-Expose-Headers: X-Total-Count
+```
 
 The widget always requests a bounded page and reads the total count rather
 than downloading the entire database.
@@ -140,9 +158,7 @@ float_max=0.07
 wear=Factory%20New
 ```
 
-`search` performs case-insensitive matching against skin and weapon names.
-`limit` is bounded to 1–100, with a widget default of 25. `offset` must be zero
-or greater.
+`limit` is bounded to 1–100 and `offset` must be zero or greater.
 
 ### Combination rules
 
@@ -192,6 +208,26 @@ A skin is available for a selected wear when its possible float interval
 intersects that wear interval. Multiple selected wear values use OR logic.
 The backend uses the same definitions to filter and to report available wear
 names for cards.
+
+For the first four half-open wear intervals `[lower, upper)`, overlap is
+implemented as:
+
+```text
+skin.max_float >= lower
+AND skin.min_float < upper
+```
+
+For Battle-Scarred's closed interval `[0.45, 1.00]`, overlap is implemented as:
+
+```text
+skin.max_float >= 0.45
+AND skin.min_float <= 1.00
+```
+
+Therefore a point range whose minimum and maximum are exactly `0.07` matches
+Minimal Wear and does not match Factory New. The same inclusion/exclusion rule
+applies at `0.15`, `0.38`, and `0.45`. A wider skin range that genuinely spans
+a boundary can correctly be available in both neighbouring wear categories.
 
 ## Backend Structure
 
@@ -260,6 +296,21 @@ parameters are updated without discarding unrelated page parameters.
 `disconnectedCallback` removes listeners, cancels timers, and aborts pending
 requests so Wix Studio remounts do not leak work.
 
+## Initial Implementation Defaults
+
+The following choices are practical defaults for the first working Wix preview,
+not permanent SkinRush product decisions:
+
+- Search initially matches skin and weapon names.
+- The widget initially requests 25 results per page.
+- Multiple active collections initially use `Filtered skins` in breadcrumbs.
+- Selecting a card initially opens the expanded panel.
+- Case and collection context initially use the card placement defined during
+  implementation from the supplied visual references.
+
+These defaults can be refined after preview feedback without changing the API,
+filter-state architecture, or custom-element boundary.
+
 ## User Interface
 
 ### Filters
@@ -287,9 +338,9 @@ are keyboard accessible and have visible focus treatment.
 ### Breadcrumbs
 
 The default breadcrumb is `Database → Skins`. A single active collection uses
-`Database → <Collection> → Skins`. Selecting a skin adds its name. When several
-collections are active, the middle label becomes `Filtered skins` rather than
-inventing a single collection context.
+`Database → <Collection> → Skins`. Selecting a skin initially adds its name.
+When several collections are active, the initial middle label is
+`Filtered skins`. These labels are preview-stage content defaults.
 
 ### Cards and expanded panel
 
@@ -311,6 +362,13 @@ duplicating cards.
 Selecting a semantic card button opens a full-width expanded panel immediately
 after the selected card's grid row. The widget recalculates the row insertion
 point when its supported container width changes.
+
+The initial expanded panel is structural and uses only authoritative existing
+data. Its final information architecture, actions and richer SkinRush
+functionality are not locked by this specification.
+
+No additional actions or metadata will be invented to make the initial panel
+appear complete.
 
 No unverified price is shown. Because live image URLs are empty, cards use a
 finished SkinRush-styled fallback visual rather than a broken image. Populating
@@ -345,6 +403,10 @@ Desktop and tablet are the only supported layouts for this MVP.
 - No phone navigation treatment is created.
 - No stacked phone card redesign is created.
 - No phone-specific breakpoint is created.
+
+No numerical phone/tablet breakpoint is invented to define the unsupported
+range. Supported behaviour is evaluated using the actual Wix desktop/tablet
+placement and available component container width.
 
 Below the supported tablet range, the widget preserves content through minimum
 sizing and safe overflow where practical. Phone-sized layouts are explicitly
@@ -408,7 +470,8 @@ Backend tests cover:
 - Souvenir true and false.
 - Float minimum, maximum, and interval overlap.
 - Every wear category.
-- Exact boundaries at `0.07`, `0.15`, `0.38`, and `0.45`.
+- Exact boundaries at `0.07`, `0.15`, `0.38`, and `0.45`, asserting expected
+  inclusion in the next range and exclusion from the preceding range.
 - Same-category OR and cross-category AND logic.
 - Search, pagination, invalid values, and zero results.
 - Parameterised SQL replacements.
