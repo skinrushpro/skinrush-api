@@ -80,6 +80,49 @@ test('CORS preflight uses the Wix allowlist', async () => {
   );
 });
 
+test('GET /api/test-db reports database availability', async () => {
+  const sequelize = { authenticate: async () => {} };
+  const baseUrl = await startApp({ sequelize });
+  const response = await fetch(`${baseUrl}/api/test-db`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    success: true,
+    message: 'Database connected successfully'
+  });
+});
+
+test('GET /api/test-db hides database failure details', async (t) => {
+  t.mock.method(console, 'error', () => {});
+  const sequelize = {
+    authenticate: async () => {
+      throw new Error('database "private_name" does not exist');
+    }
+  };
+  const baseUrl = await startApp({ sequelize });
+  const response = await fetch(`${baseUrl}/api/test-db`);
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    success: false,
+    error: 'Database unavailable'
+  });
+});
+
+test('GET /api/skins hides ORM failure details', async (t) => {
+  t.mock.method(console, 'error', () => {});
+  const Skin = {
+    findAll: async () => {
+      throw new Error('relation private_schema.skins does not exist');
+    }
+  };
+  const baseUrl = await startApp({ Skin });
+  const response = await fetch(`${baseUrl}/api/skins`);
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: 'Failed to fetch skins' });
+});
+
 test('GET /api/collections returns the service result with parsed query values', async () => {
   let receivedQuery;
   const expected = {

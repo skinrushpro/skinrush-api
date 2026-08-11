@@ -55,7 +55,7 @@ export function createApp({
       res.json({ success: true, message: 'Database connected successfully' });
     } catch (error) {
       console.error('DB connection error:', error.message);
-      res.status(500).json({ success: false, error: error.message });
+      res.status(503).json({ success: false, error: 'Database unavailable' });
     }
   });
 
@@ -65,7 +65,7 @@ export function createApp({
       res.json(skins);
     } catch (error) {
       console.error('Failed to fetch skins:', error);
-      res.status(500).json({ error: 'Failed to fetch skins', details: error.message });
+      res.status(500).json({ error: 'Failed to fetch skins' });
     }
   });
 
