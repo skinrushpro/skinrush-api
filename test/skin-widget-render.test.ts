@@ -131,6 +131,23 @@ test('results preserve cards during loading and expose loading, empty, and error
   assert.match(error, /data-action="retry"/);
 });
 
+test('results expose bounded previous and next pagination controls', () => {
+  const html = renderResults({
+    items: [skin],
+    total: 60,
+    state: { ...createDefaultFilterState(), offset: 25 },
+    selectedId: null,
+    loading: false,
+    error: null,
+  });
+
+  assert.match(html, /Page 2 of 3/);
+  assert.match(html, /data-action="previous-page"/);
+  assert.match(html, /data-action="next-page"/);
+  assert.match(html, /data-offset="0"/);
+  assert.match(html, /data-offset="50"/);
+});
+
 test('widget CSS uses container-driven grid adaptation without a phone breakpoint', () => {
   const cssPath = path.resolve(
     'src/site/widgets/custom-elements/skinrush-skin-database/element.module.css',

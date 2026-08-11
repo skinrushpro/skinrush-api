@@ -9,16 +9,11 @@ export function escapeHtml(value: unknown): string {
     .replaceAll("'", '&#39;');
 }
 
-function selected(value: string, values: readonly string[]): string {
-  return values.includes(value) ? ' selected' : '';
-}
-
 function optionList(
   values: readonly { value: string; label: string }[],
-  active: readonly string[],
 ): string {
   return values.map(({ value, label }) => (
-    `<option value="${escapeHtml(value)}"${selected(value, active)}>${escapeHtml(label)}</option>`
+    `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`
   )).join('');
 }
 
@@ -26,13 +21,14 @@ function multiSelect(
   name: string,
   label: string,
   values: readonly { value: string; label: string }[],
-  active: readonly string[],
+  _active: readonly string[],
 ): string {
   return `
     <label class="sr-field sr-field--select">
       <span>${escapeHtml(label)}</span>
-      <select name="${escapeHtml(name)}" multiple aria-label="${escapeHtml(label)}">
-        ${optionList(values, active)}
+      <select name="${escapeHtml(name)}" aria-label="${escapeHtml(label)}">
+        <option value="">Any ${escapeHtml(label.toLowerCase())}</option>
+        ${optionList(values)}
       </select>
     </label>`;
 }

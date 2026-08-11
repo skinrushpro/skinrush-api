@@ -1,49 +1,81 @@
-import React, { type FC, useState, useEffect, useCallback } from 'react';
+import React, { type FC, useCallback, useEffect, useState } from 'react';
 import { widget } from '@wix/editor';
 import {
+  FormField,
+  Input,
+  SectionHelper,
   SidePanel,
   WixDesignSystemProvider,
-  Input,
-  FormField,
-  SectionHelper,
 } from '@wix/design-system';
 import '@wix/design-system/styles.global.css';
 
-const SITE_WIDGETS_DOCS = 'https://dev.wix.com/docs/build-apps/develop-your-app/frameworks/wix-cli/supported-extensions/site-extensions/site-widgets/site-widget-extension-files-and-code';
+const DEFAULT_API_BASE_URL = 'https://skinrush-api-8z3s.onrender.com';
 
 const Panel: FC = () => {
-  const [displayName, setDisplayName] = useState<string>('');
+  const [apiBaseUrl, setApiBaseUrl] = useState(DEFAULT_API_BASE_URL);
+  const [pageSize, setPageSize] = useState('25');
+  const pageSizeValid = /^\d+$/.test(pageSize) && Number(pageSize) >= 1 && Number(pageSize) <= 100;
 
   useEffect(() => {
-    widget.getProp('display-name')
-      .then(displayName => setDisplayName(displayName || `Your Widget's Title`))
-      .catch(error => console.error('Failed to fetch display-name:', error));
-  }, [setDisplayName]);
+    Promise.all([
+      widget.getProp('api-base-url'),
+      widget.getProp('page-size'),
+    ]).then(([storedUrl, storedPageSize]) => {
+      setApiBaseUrl(storedUrl || DEFAULT_API_BASE_URL);
+      setPageSize(String(storedPageSize || 25));
+    }).catch(error => console.error('Failed to load SkinRush widget settings:', error));
+  }, []);
 
-  const handleDisplayNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const newDisplayName = event.target.value;
-    setDisplayName(newDisplayName);
-    widget.setProp('display-name', newDisplayName);
-  }, [setDisplayName]);
+  const handleApiUrl = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value.trim();
+    setApiBaseUrl(event.target.value);
+    if (/^https:\/\//i.test(value)) widget.setProp('api-base-url', value);
+  }, []);
+
+  const handlePageSize = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setPageSize(value);
+    if (/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 100) {
+      widget.setProp('page-size', value);
+    }
+  }, []);
 
   return (
     <WixDesignSystemProvider>
       <SidePanel width="300" height="100vh">
         <SidePanel.Content noPadding stretchVertically>
           <SidePanel.Field>
-            <FormField label="Display Name">
+            <FormField label="API base URL">
               <Input
-                type="text"
-                value={displayName}
-                onChange={handleDisplayNameChange}
-                aria-label="Display Name"
+                type="url"
+                value={apiBaseUrl}
+                onChange={handleApiUrl}
+                aria-label="API base URL"
+              />
+            </FormField>
+          </SidePanel.Field>
+          <SidePanel.Field>
+            <FormField label="Results per page">
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={pageSize}
+                onChange={handlePageSize}
+                aria-label="Results per page"
               />
             </FormField>
           </SidePanel.Field>
         </SidePanel.Content>
         <SidePanel.Footer noPadding>
-          <SectionHelper fullWidth appearance="success" border="topBottom">
-            Learn more about <a href={SITE_WIDGETS_DOCS} target="_blank" rel="noopener noreferrer" title="Site Widget docs">Site Widgets</a>
+          <SectionHelper
+            fullWidth
+            appearance={pageSizeValid ? 'success' : 'warning'}
+            border="topBottom"
+          >
+            {pageSizeValid
+              ? 'Public database settings are valid.'
+              : 'Results per page must be between 1 and 100.'}
           </SectionHelper>
         </SidePanel.Footer>
       </SidePanel>
