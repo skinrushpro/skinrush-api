@@ -65,6 +65,47 @@ GET /api/collections/the_falchion_collection
 The detail response includes linked skins ordered by Valve rarity and skin
 name. Unknown slugs return `COLLECTION_NOT_FOUND` with HTTP 404.
 
+## Skins API
+
+The existing unfiltered endpoint remains compatible and returns the complete
+skin array:
+
+```http
+GET /api/skins
+```
+
+Providing any supported query parameter enables server-side filtering and
+pagination while keeping the response body as a skin array. The total number of
+matching skins is returned in the `X-Total-Count` response header, which is
+exposed to approved cross-origin Wix clients.
+
+Supported query parameters:
+
+- `search`: partial, case-insensitive skin or weapon name match.
+- `weapon`, `collection`, `case`, `source_type`, `rarity`, `wear`:
+  comma-separated multi-select values.
+- `stattrak`, `souvenir`: `true` or `false`.
+- `float_min`, `float_max`: values from 0 to 1 using range overlap semantics.
+- `limit`: 1 to 100; default 25.
+- `offset`: zero or greater; default 0.
+
+Selections within one category use OR; selections across categories use AND.
+Wear filters use the standard half-open CS wear ranges, with Battle-Scarred
+including 1.00. For example:
+
+```http
+GET /api/skins?weapon=AK-47%2CAWP&rarity=Classified&wear=Factory%20New&limit=25
+```
+
+Available authoritative filter values are returned in one response:
+
+```http
+GET /api/skins/filters
+```
+
+The legacy `POST /api/skins/filter` weapon filter remains available for its
+existing consumers.
+
 ## Tests
 
 The test suite does not require access to Render or PostgreSQL:

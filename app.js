@@ -5,6 +5,7 @@ import express from 'express';
 import authRoutes from './routes/auth.js';
 import { createCollectionsRouter } from './routes/collections.js';
 import membersRoute from './routes/members.js';
+import { createSkinsRouter } from './routes/skins.js';
 import steamRoutes from './routes/steam.js';
 
 const allowedOrigins = new Set([
@@ -18,12 +19,13 @@ const corsOptions = {
     callback(null, !origin || allowedOrigins.has(origin));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  exposedHeaders: ['X-Total-Count'],
   credentials: true
 };
 
 export function createApp({
   sequelize,
-  Skin,
+  skinService,
   collectionService,
   httpClient = axios,
   csfloatApiKey = process.env.CSFLOAT_API_KEY
@@ -45,6 +47,10 @@ export function createApp({
     app.use('/api/collections', createCollectionsRouter(collectionService));
   }
 
+  if (skinService) {
+    app.use('/api/skins', createSkinsRouter({ skinService, sequelize }));
+  }
+
   app.get('/api/hello', (req, res) => {
     res.json({ message: 'Backend is working!' });
   });
@@ -56,16 +62,6 @@ export function createApp({
     } catch (error) {
       console.error('DB connection error:', error.message);
       res.status(503).json({ success: false, error: 'Database unavailable' });
-    }
-  });
-
-  app.get('/api/skins', async (req, res) => {
-    try {
-      const skins = await Skin.findAll();
-      res.json(skins);
-    } catch (error) {
-      console.error('Failed to fetch skins:', error);
-      res.status(500).json({ error: 'Failed to fetch skins' });
     }
   });
 
@@ -89,25 +85,6 @@ export function createApp({
     } catch (error) {
       console.error('CSFloat error:', error.response?.data || error.message);
       res.status(500).json({ error: 'Failed to fetch data from CSFloat' });
-    }
-  });
-
-  app.post('/api/skins/filter', async (req, res) => {
-    try {
-      const { weapon } = req.body;
-      const [results] = await sequelize.query(`
-        SELECT *
-        FROM skins
-        WHERE weapon_name = :weapon
-        LIMIT 20
-      `, {
-        replacements: { weapon }
-      });
-
-      res.json(results);
-    } catch (error) {
-      console.error('Filter error:', error.message);
-      res.status(500).json({ error: 'Filter failed' });
     }
   });
 

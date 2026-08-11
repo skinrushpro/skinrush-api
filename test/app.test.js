@@ -111,16 +111,145 @@ test('GET /api/test-db hides database failure details', async (t) => {
 
 test('GET /api/skins hides ORM failure details', async (t) => {
   t.mock.method(console, 'error', () => {});
-  const Skin = {
-    findAll: async () => {
+  const skinService = {
+    legacyList: async () => {
       throw new Error('relation private_schema.skins does not exist');
     }
   };
-  const baseUrl = await startApp({ Skin });
+  const baseUrl = await startApp({ skinService });
   const response = await fetch(`${baseUrl}/api/skins`);
 
   assert.equal(response.status, 500);
   assert.deepEqual(await response.json(), { error: 'Failed to fetch skins' });
+});
+
+test('GET /api/skins preserves the legacy unfiltered array response', async () => {
+  const expected = [{ id: 'skin-legacy' }];
+  let calls = 0;
+  const skinService = {
+    async legacyList() {
+      calls += 1;
+      return expected;
+    }
+  };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), expected);
+  assert.equal(response.headers.get('x-total-count'), null);
+  assert.equal(calls, 1);
+});
+
+test('filtered skins remain an array and expose total count cross-origin', async () => {
+  let receivedQuery;
+  const skinService = {
+    async search(query) {
+      receivedQuery = query;
+      return { items: [{ id: 'skin-1' }], total: 1475 };
+    }
+  };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins?weapon=AK-47`, {
+    headers: { Origin: 'https://www.skinrush.pro' }
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), [{ id: 'skin-1' }]);
+  assert.equal(response.headers.get('x-total-count'), '1475');
+  assert.match(
+    response.headers.get('access-control-expose-headers') || '',
+    /X-Total-Count/i
+  );
+  assert.deepEqual(receivedQuery.weapons, ['AK-47']);
+  assert.equal(receivedQuery.limit, 25);
+  assert.equal(receivedQuery.offset, 0);
+});
+
+test('GET /api/skins preserves false Boolean filters', async () => {
+  let receivedQuery;
+  const skinService = {
+    async search(query) {
+      receivedQuery = query;
+      return { items: [], total: 0 };
+    }
+  };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(
+    `${baseUrl}/api/skins?stattrak=false&souvenir=false`
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(receivedQuery.stattrak, false);
+  assert.equal(receivedQuery.souvenir, false);
+});
+
+test('GET /api/skins/filters returns authoritative filter options', async () => {
+  const expected = { weapons: ['AK-47'], wears: [] };
+  const skinService = { filterOptions: async () => expected };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins/filters`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), expected);
+});
+
+test('GET /api/skins rejects malformed query values', async () => {
+  const skinService = { search: async () => assert.fail('service must not run') };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins?wear=Pristine`);
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: 'INVALID_QUERY',
+      field: 'wear',
+      message: 'wear contains an unsupported value: Pristine'
+    }
+  });
+});
+
+test('filtered GET /api/skins hides service failure details', async (t) => {
+  t.mock.method(console, 'error', () => {});
+  const skinService = {
+    async search() {
+      throw new Error('password authentication failed for private_user');
+    }
+  };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins?limit=1`);
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: 'Failed to fetch skins' });
+});
+
+test('POST /api/skins/filter preserves the legacy weapon filter', async () => {
+  let recorded;
+  const sequelize = {
+    async query(sql, options) {
+      recorded = { sql, options };
+      return [[{ id: 'skin-1' }]];
+    }
+  };
+  const skinService = { legacyList: async () => [] };
+  const baseUrl = await startApp({ sequelize, skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins/filter`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ weapon: 'AK-47' })
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), [{ id: 'skin-1' }]);
+  assert.match(recorded.sql, /WHERE weapon_name = :weapon/);
+  assert.deepEqual(recorded.options.replacements, { weapon: 'AK-47' });
 });
 
 test('GET /api/collections returns the service result with parsed query values', async () => {
