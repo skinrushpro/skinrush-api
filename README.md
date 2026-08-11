@@ -135,9 +135,32 @@ grouped error counts and bounded samples so the source data can be repaired.
 
 ## Wix development
 
-The Wix app commands remain available:
+The version-controlled custom element is named **SkinRush Skin Database**. It
+supports desktop and tablet Wix Studio placements. Phone-sized layouts are not
+supported by the current MVP; narrow containers preserve the desktop/tablet
+surface with safe horizontal overflow rather than switching to a phone UI.
+
+Before previewing the widget, deploy this repository's filtered skin API so the
+configured base URL provides both:
+
+- `GET /api/skins/filters`
+- `GET /api/skins?limit=25` with `X-Total-Count` exposed through CORS
+
+Start the authenticated Wix development session:
 
 ```console
 npm run dev
 npm run build
 ```
+
+In the CLI menu, choose the option to view the custom element in the editor.
+On the connected Wix Studio test site, open **Add Elements**, find the app's
+custom elements, and add **SkinRush Skin Database** to the intended database
+page. Stretch it to the available section width and give it enough height for
+the inline filters and result grid. Use the widget settings panel only when the
+API base URL or the bounded 1–100 results-per-page value needs to change; the
+defaults are the production Render URL and 25 results.
+
+The widget is deliberately not added to a page automatically. Wix page
+placement, surrounding navigation, authentication, profiles, and unrelated
+site features remain owned by Wix Studio.
