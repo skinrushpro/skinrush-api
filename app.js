@@ -17,9 +17,20 @@ const allowedOrigins = new Set([
   'http://localhost:5174'
 ]);
 
+function isAllowedOrigin(origin) {
+  if (!origin || allowedOrigins.has(origin)) return true;
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'https:'
+      && url.hostname.endsWith('.editor.wix.com');
+  } catch {
+    return false;
+  }
+}
+
 const corsOptions = {
   origin(origin, callback) {
-    callback(null, !origin || allowedOrigins.has(origin));
+    callback(null, isAllowedOrigin(origin));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   exposedHeaders: ['X-Total-Count'],

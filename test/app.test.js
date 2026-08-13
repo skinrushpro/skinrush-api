@@ -40,6 +40,7 @@ for (const origin of [
   'https://skinrush.pro',
   'https://www.skinrush.pro',
   'https://editor.wix.com',
+  'https://hyperdesignagency-skinrushnet.editor.wix.com',
   'https://preview.wixsite.com',
   'http://localhost:5173',
   'http://localhost:5174'
@@ -64,6 +65,19 @@ test('CORS omits allow-origin for unknown browser origins', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('access-control-allow-origin'), null);
+});
+
+test('CORS rejects lookalike and insecure Wix editor origins', async () => {
+  const baseUrl = await startApp();
+  for (const origin of [
+    'https://editor.wix.com.attacker.example',
+    'http://tenant.editor.wix.com'
+  ]) {
+    const response = await fetch(`${baseUrl}/api/hello`, {
+      headers: { Origin: origin }
+    });
+    assert.equal(response.headers.get('access-control-allow-origin'), null);
+  }
 });
 
 test('CORS preflight uses the Wix allowlist', async () => {
