@@ -13,6 +13,7 @@ const allowedOrigins = new Set([
   'https://www.skinrush.pro',
   'https://editor.wix.com',
   'https://preview.wixsite.com',
+  'https://99b1b14d-b61d-4c75-b149-c3899470677a.dev.wix-code.com',
   'http://localhost:5173',
   'http://localhost:5174'
 ]);

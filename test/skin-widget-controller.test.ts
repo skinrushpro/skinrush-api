@@ -121,6 +121,21 @@ test('pagination writes a bounded offset and requests the selected page', () => 
   assert.equal(h.searches.at(-1)?.state.offset, 25);
 });
 
+test('source commands use the existing filter and history request pipeline', () => {
+  const h = harness();
+  h.controller.connect();
+
+  h.controller.applySourceFilter('case', 'operation_riptide_case');
+  assert.deepEqual(h.searches.at(-1)?.state.cases, ['operation_riptide_case']);
+  assert.deepEqual(h.searches.at(-1)?.state.collections, []);
+  assert.equal(h.params().get('case'), 'operation_riptide_case');
+
+  h.controller.applySourceFilter('collection', 'riptide_collection');
+  assert.deepEqual(h.searches.at(-1)?.state.collections, ['riptide_collection']);
+  assert.deepEqual(h.searches.at(-1)?.state.cases, ['operation_riptide_case']);
+  assert.equal(h.params().get('collection'), 'riptide_collection');
+});
+
 test('disconnect cancels debounce, aborts requests, and removes popstate listener', () => {
   const h = harness();
   h.controller.connect();
