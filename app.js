@@ -18,7 +18,7 @@ const allowedOrigins = new Set([
 ]);
 
 function isAllowedOrigin(origin) {
-  if (!origin || allowedOrigins.has(origin)) return true;
+  if (!origin || origin === 'null' || allowedOrigins.has(origin)) return true;
   try {
     const url = new URL(origin);
     return url.protocol === 'https:'

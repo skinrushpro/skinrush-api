@@ -67,6 +67,17 @@ test('CORS omits allow-origin for unknown browser origins', async () => {
   assert.equal(response.headers.get('access-control-allow-origin'), null);
 });
 
+test('CORS permits the opaque origin used by Wix editor sandboxes', async () => {
+  const baseUrl = await startApp();
+  const response = await fetch(`${baseUrl}/api/hello`, {
+    headers: { Origin: 'null' }
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), 'null');
+  assert.equal(response.headers.get('access-control-expose-headers'), 'X-Total-Count');
+});
+
 test('CORS rejects lookalike and insecure Wix editor origins', async () => {
   const baseUrl = await startApp();
   for (const origin of [
