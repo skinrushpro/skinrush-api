@@ -37,6 +37,7 @@ test('GET /api/hello returns the backend health message', async () => {
 });
 
 for (const origin of [
+  'https://skinrush.pro',
   'https://www.skinrush.pro',
   'https://editor.wix.com',
   'https://preview.wixsite.com',

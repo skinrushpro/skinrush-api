@@ -9,6 +9,7 @@ import { createSkinsRouter } from './routes/skins.js';
 import steamRoutes from './routes/steam.js';
 
 const allowedOrigins = new Set([
+  'https://skinrush.pro',
   'https://www.skinrush.pro',
   'https://editor.wix.com',
   'https://preview.wixsite.com',
