@@ -1,7 +1,9 @@
 import { getWearRange } from './wear.js';
+import { DEFAULT_SKIN_SORT, isSkinSort } from './sort.js';
 
 const recognisedKeys = new Set([
   'search',
+  'sort',
   'weapon',
   'collection',
   'case',
@@ -44,6 +46,13 @@ function nullableText(value) {
   const text = first(value);
   if (text === undefined || text === null) return null;
   return String(text).trim() || null;
+}
+
+function sortValue(value) {
+  const text = first(value);
+  if (text === undefined || text === null || text === '') return DEFAULT_SKIN_SORT;
+  if (isSkinSort(text)) return text;
+  throw new SkinQueryError('sort', `sort contains an unsupported value: ${text}`);
 }
 
 function booleanValue(field, value) {
@@ -103,6 +112,7 @@ export function parseSkinQuery(rawQuery = {}) {
 
   return {
     enhanced: Object.keys(rawQuery).some(key => recognisedKeys.has(key)),
+    sort: sortValue(rawQuery.sort),
     search: nullableText(rawQuery.search),
     weapons: list(rawQuery.weapon),
     collections: list(rawQuery.collection),
@@ -132,4 +142,3 @@ export function parseSkinQuery(rawQuery = {}) {
     )
   };
 }
-
