@@ -242,6 +242,37 @@ test('GET /api/skins rejects malformed query values', async () => {
   });
 });
 
+test('GET /api/skins rejects an unsupported sort safely', async () => {
+  const skinService = { search: async () => assert.fail('service must not run') };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins?sort=price_desc`);
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: 'INVALID_QUERY',
+      field: 'sort',
+      message: 'sort contains an unsupported value: price_desc'
+    }
+  });
+});
+
+test('the same sorted URL produces the same ordered response', async () => {
+  const ordered = [{ id: 'a' }, { id: 'b' }];
+  const skinService = { search: async () => ({ items: ordered, total: 2 }) };
+  const baseUrl = await startApp({ skinService });
+  const url = `${baseUrl}/api/skins?weapon=AK-47&sort=name_asc&limit=25`;
+
+  const first = await fetch(url);
+  const second = await fetch(url);
+
+  assert.deepEqual(await first.json(), ordered);
+  assert.deepEqual(await second.json(), ordered);
+  assert.equal(first.headers.get('X-Total-Count'), '2');
+  assert.equal(second.headers.get('X-Total-Count'), '2');
+});
+
 test('filtered GET /api/skins hides service failure details', async (t) => {
   t.mock.method(console, 'error', () => {});
   const skinService = {

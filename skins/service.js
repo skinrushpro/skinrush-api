@@ -1,6 +1,7 @@
 import { QueryTypes } from 'sequelize';
 
 import { WEAR_RANGES, getAvailableWears, getWearRange } from './wear.js';
+import { buildSkinOrder } from './sort.js';
 
 function buildWhere(query) {
   const conditions = [];
@@ -184,13 +185,15 @@ export function createSkinService({ sequelize, Skin }) {
 
     async search(query) {
       const { where, replacements } = buildWhere(query);
+      const order = buildSkinOrder(query);
       const listReplacements = {
         ...replacements,
+        ...order.replacements,
         limit: query.limit,
         offset: query.offset
       };
       const listSql = `${LIST_SQL}${where}
-ORDER BY s.weapon_name, s.skin_name, s.skin_id
+ORDER BY ${order.sql}
 LIMIT :limit OFFSET :offset`;
       const countSql = `SELECT COUNT(*)::integer AS total FROM skins s ${where}`;
 

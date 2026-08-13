@@ -86,6 +86,68 @@ test('combined filters use fixed SQL fragments and replacements', async () => {
   assert.equal(countCall.options.replacements.search, '%redline%');
 });
 
+const expectedOrders = {
+  weapon_asc: 's.weapon_name ASC, s.skin_name ASC, s.skin_id ASC',
+  name_asc: 's.skin_name ASC, s.weapon_name ASC, s.skin_id ASC',
+  float_min_asc: 's.min_float ASC, s.weapon_name ASC, s.skin_name ASC, s.skin_id ASC',
+  float_max_desc: 's.max_float DESC, s.weapon_name ASC, s.skin_name ASC, s.skin_id ASC'
+};
+
+for (const [sort, fragment] of Object.entries(expectedOrders)) {
+  test(`${sort} uses a fixed stable order before pagination`, async () => {
+    const recorder = queryRecorder(sql => sql.includes('AS total') ? [{ total: 0 }] : []);
+    const service = createSkinService({ sequelize: recorder.sequelize, Skin: {} });
+
+    await service.search(parseSkinQuery({ sort, limit: '25', offset: '50' }));
+
+    const sql = recorder.calls.find(call => call.sql.includes('LIMIT :limit')).sql;
+    assert.equal(sql.includes(fragment), true);
+    assert.ok(sql.indexOf('ORDER BY') < sql.indexOf('LIMIT :limit'));
+  });
+}
+
+test('rarity ordering uses the confirmed game hierarchy in both directions', async () => {
+  for (const [sort, direction] of [['rarity_desc', 'DESC'], ['rarity_asc', 'ASC']]) {
+    const recorder = queryRecorder(sql => sql.includes('AS total') ? [{ total: 0 }] : []);
+    const service = createSkinService({ sequelize: recorder.sequelize, Skin: {} });
+
+    await service.search(parseSkinQuery({ sort }));
+
+    const sql = recorder.calls.find(call => call.sql.includes('LIMIT :limit')).sql;
+    for (const [name, rank] of [
+      ['Consumer Grade', 1],
+      ['Industrial Grade', 2],
+      ['Mil-Spec Grade', 3],
+      ['Restricted', 4],
+      ['Classified', 5],
+      ['Covert', 6],
+      ['Extraordinary', 7]
+    ]) {
+      assert.match(sql, new RegExp(`WHEN '${name}' THEN ${rank}`));
+    }
+    assert.match(sql, new RegExp(`END ${direction} NULLS LAST`));
+    assert.equal(sql.trim().match(/s\.skin_id ASC/g)?.length, 1);
+  }
+});
+
+test('search relevance precedes the selected sort and uses replacements', async () => {
+  const recorder = queryRecorder(sql => sql.includes('AS total') ? [{ total: 0 }] : []);
+  const service = createSkinService({ sequelize: recorder.sequelize, Skin: {} });
+
+  await service.search(parseSkinQuery({ search: 'Redline', sort: 'name_asc' }));
+
+  const listCall = recorder.calls.find(call => call.sql.includes('LIMIT :limit'));
+  assert.ok(listCall);
+  assert.ok(listCall.sql.indexOf('CASE') < listCall.sql.indexOf('s.skin_name ASC'));
+  assert.equal(listCall.sql.includes('Redline'), false);
+  assert.equal(listCall.options.replacements.searchExact, 'Redline');
+  assert.equal(listCall.options.replacements.searchPrefix, 'Redline%');
+  assert.equal(listCall.options.replacements.searchContains, '%Redline%');
+  assert.equal(listCall.sql.trim().match(/s\.skin_id ASC/g)?.length, 1);
+  const countCall = recorder.calls.find(call => call.sql.includes('AS total'));
+  assert.equal('searchExact' in countCall.options.replacements, false);
+});
+
 test('half-open and closed wear ranges use different upper comparisons', async () => {
   for (const [wear, expected, excluded] of [
     ['Factory New', 's.min_float < :wearMax0', 's.min_float <= :wearMax0'],
@@ -201,4 +263,3 @@ test('filter options use one query and preserve authoritative values', async () 
     maxInclusive: false
   });
 });
-
