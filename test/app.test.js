@@ -39,7 +39,9 @@ test('GET /api/hello returns the backend health message', async () => {
 for (const origin of [
   'https://www.skinrush.pro',
   'https://editor.wix.com',
-  'https://preview.wixsite.com'
+  'https://preview.wixsite.com',
+  'http://localhost:5173',
+  'http://localhost:5174'
 ]) {
   test(`CORS allows ${origin}`, async () => {
     const baseUrl = await startApp();

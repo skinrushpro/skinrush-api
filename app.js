@@ -11,7 +11,9 @@ import steamRoutes from './routes/steam.js';
 const allowedOrigins = new Set([
   'https://www.skinrush.pro',
   'https://editor.wix.com',
-  'https://preview.wixsite.com'
+  'https://preview.wixsite.com',
+  'http://localhost:5173',
+  'http://localhost:5174'
 ]);
 
 const corsOptions = {
