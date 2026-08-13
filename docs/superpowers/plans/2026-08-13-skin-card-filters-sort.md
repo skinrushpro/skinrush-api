@@ -794,7 +794,7 @@ Install the maintained icon-library packages explicitly rather than relying on a
 npm.cmd install @fortawesome/fontawesome-svg-core @fortawesome/free-solid-svg-icons
 ```
 
-Import `icon` from `@fortawesome/fontawesome-svg-core`, `faChartSimple` for the orange StatTrak™ symbol, and `faCrown` for the yellow Souvenir symbol. Convert only those library icons to markup with `icon(definition).html.join('')`; the accessible outer status element supplies the label and the library SVG remains `aria-hidden="true"`.
+Import `icon` from `@fortawesome/fontawesome-svg-core`, `faChartSimple` for the orange StatTrak™ symbol, and `faCrown` for the yellow Souvenir symbol. Do not substitute different glyphs merely because they have similar semantic names. Convert only those approved library icons to inline SVG markup with `icon(definition).html.join('')`; the accessible outer status element supplies the label and the library SVG remains `aria-hidden="true"`. Style the SVG size, colour, alignment, and hover/focus glow through the widget CSS.
 
 Rebuild `card()` in the required order. Use compact focusable icon elements only when authoritative booleans are true:
 
@@ -816,7 +816,7 @@ function statusStrip(skin: SkinResult): string {
 }
 ```
 
-No Armoury or SkinRush Pick element renders.
+Keep the four status meanings architecturally identifiable—green Armoury, orange StatTrak™, yellow Souvenir, and pink SkinRush Pick—but render only StatTrak™ and Souvenir because only those fields are authoritative. No Armoury or SkinRush Pick element renders, hidden statuses consume no space, and the visible icon group remains centred.
 
 Render float positioning as CSS custom properties from bounded numeric helpers:
 
@@ -880,6 +880,8 @@ test('source filters apply through the normal state and request pipeline', () =>
 ```
 
 Add rendering contract assertions that checkbox inputs, source controls, sort select, and popup triggers expose the exact data attributes consumed by `element.tsx`. Add a source-action assertion ensuring the card-detail opener is not an ancestor of the source button.
+
+Add a focused root-aware outside-click test using a composed event path. Its inside path must include the active `.sr-multiselect` even when `event.target` is retargeted to the custom-element host. Assert that toggling a checkbox through this path updates the filter immediately while leaving that popover open. Add complementary assertions that a genuinely outside path closes it, Escape closes it and restores trigger focus, opening another filter replaces the active one, and unmount cleanup removes the document listener.
 
 - [ ] **Step 2: Run focused tests and confirm missing controller behavior**
 
@@ -945,7 +947,7 @@ const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
 };
 ```
 
-Add one document pointer listener in an effect that calls `setOpenFilter(null)` only when the click target is outside the currently open `.sr-multiselect`. Remove it during cleanup. Do not add per-option listeners. Native checkbox Space behavior remains intact.
+Add one document pointer listener in an effect. Resolve containment with `event.composedPath()` (with a root-aware containment fallback only if required by the supported runtime), and treat the event as inside when the composed path contains the currently open `.sr-multiselect`. Do not rely solely on `event.target.closest(...)`, because Wix custom-element/Shadow DOM retargeting can make an internal click appear to originate from the host. Call `setOpenFilter(null)` only for a genuinely outside path. Remove the document listener in the effect cleanup so custom-element unmount/disconnect cannot leak it. Do not add per-option listeners. Native checkbox Space behavior remains intact, selection updates results immediately, and `openFilter` remains stable across the resulting render.
 
 - [ ] **Step 5: Run controller/render tests and TypeScript compile**
 
@@ -991,9 +993,10 @@ assert.match(css, /\.sr-source-plate/);
 assert.match(css, /\.sr-multiselect-panel/);
 assert.match(css, /\.sr-tooltip/);
 assert.match(css, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(/i);
+assert.match(css, /flex-wrap:\s*wrap/i);
 assert.match(css, /object-fit:\s*contain/i);
 assert.match(css, /overflow:\s*visible/i);
-assert.doesNotMatch(css, /@media/i);
+assert.doesNotMatch(css, /\.sr-mobile-filter-drawer|\.sr-mobile-card|\.sr-mobile-navigation/i);
 ```
 
 Assert deleted selectors `.sr-rarity-dot`, `.sr-wear-chip`, and `.sr-collection-context` are absent.
@@ -1023,7 +1026,7 @@ Keep palette variables and desktop/tablet minimum sizing. Implement:
 - Results count and compact Sort by control grouped in the header and wrapping by available container width.
 - Cyan focus rings for triggers, options, source buttons, sort, cards, and pagination.
 
-Use no `@media` rule; allow container-driven grid/flex wrapping. Do not add phone-specific behavior.
+Use container-driven grid/flex wrapping for desktop and tablet adaptation. Do not add a phone-width viewport breakpoint, mobile drawer, phone card redesign, or phone navigation. Legitimate capability and accessibility media queries, including `@media (prefers-reduced-motion: reduce)`, remain permitted.
 
 - [ ] **Step 4: Run render tests and Wix build**
 
