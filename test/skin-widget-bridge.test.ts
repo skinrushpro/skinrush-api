@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   createResultsBridgeEvent,
   createResultsBridgePayload,
+  dispatchResultsBridgeEvent,
   dispatchSkinrushCommand,
   parseSkinrushCommand,
   parseResultsBridgePayload,
@@ -156,6 +157,31 @@ test('result events expose validated payloads across the custom-element boundary
   assert.equal(event.bubbles, true);
   assert.equal(event.composed, true);
   assert.deepEqual(event.detail, payload);
+});
+
+test('result events dispatch from the custom-element host when React renders in shadow DOM', () => {
+  const payload = createResultsBridgePayload(snapshot(), 10);
+  const dispatched: Event[] = [];
+  const host = { dispatchEvent: (event: Event) => { dispatched.push(event); return true; } };
+  const root = {
+    getRootNode: () => ({ host }),
+    dispatchEvent: () => { throw new Error('must not dispatch from shadow content'); },
+  };
+  const OriginalShadowRoot = globalThis.ShadowRoot;
+  class TestShadowRoot { host = host; }
+  const shadowRoot = new TestShadowRoot();
+  root.getRootNode = () => shadowRoot;
+  Object.defineProperty(globalThis, 'ShadowRoot', { value: TestShadowRoot, configurable: true });
+  try {
+    dispatchResultsBridgeEvent(root as unknown as HTMLElement, payload);
+  } finally {
+    if (OriginalShadowRoot === undefined) delete (globalThis as { ShadowRoot?: unknown }).ShadowRoot;
+    else Object.defineProperty(globalThis, 'ShadowRoot', { value: OriginalShadowRoot, configurable: true });
+  }
+
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].type, 'skinrush-results-change');
+  assert.deepEqual((dispatched[0] as CustomEvent).detail, payload);
 });
 
 test('commands route only newer validated revisions into the existing controller', () => {

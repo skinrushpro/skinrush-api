@@ -169,6 +169,17 @@ export function createResultsBridgeEvent(
   });
 }
 
+export function dispatchResultsBridgeEvent(
+  root: HTMLElement,
+  payload: ResultsBridgePayload,
+): void {
+  const rootNode = root.getRootNode();
+  const target = typeof ShadowRoot !== 'undefined' && rootNode instanceof ShadowRoot
+    ? rootNode.host
+    : root;
+  target.dispatchEvent(createResultsBridgeEvent(payload));
+}
+
 function isSourceAction(value: unknown): value is BridgeSourceAction {
   return isRecord(value)
     && (value.kind === 'case' || value.kind === 'collection')

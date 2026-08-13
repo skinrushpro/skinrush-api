@@ -12,8 +12,8 @@ import ReactDOM from 'react-dom';
 import reactToWebComponent from 'react-to-webcomponent';
 import { SkinApiClient } from './api';
 import {
-  createResultsBridgeEvent,
   createResultsBridgePayload,
+  dispatchResultsBridgeEvent,
   dispatchSkinrushCommand,
 } from './bridge-contract';
 import {
@@ -124,7 +124,7 @@ const CustomElement: FC<Props> = ({
     if (!root) return;
     bridgeRevisionRef.current += 1;
     const payload = createResultsBridgePayload(snapshot, bridgeRevisionRef.current);
-    root.dispatchEvent(createResultsBridgeEvent(payload));
+    dispatchResultsBridgeEvent(root, payload);
   }, [snapshot]);
 
   useEffect(() => {
