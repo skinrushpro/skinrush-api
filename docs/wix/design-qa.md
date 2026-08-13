@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 
-Status: blocked before live card QA
+Status: native Wix visual/interaction QA remains blocked after deployment
 
 ## Completed
 
@@ -15,35 +15,42 @@ Status: blocked before live card QA
 - The adapter contains no `/api/skins` request, filtering, sorting, pagination, search, URL, or history implementation.
 - The existing CSS result renderer remains enabled until the native repeater passes QA.
 - No Wix publish action was used.
-- No Render deployment was performed.
+- Render successfully deployed commits `18517bd` and `b27ce0f` by exact SHA.
+- Wix app test version `1.6.0` was created; the public Wix site was not published.
+- Production smoke tests passed for the public array response, `X-Total-Count`,
+  existing SkinRush origins, and the exact approved Wix development origin.
 
-## Blocking finding
+## Blocking findings
 
-Wix test mode executes the page/widget from a generated origin matching:
+The API/CORS blocker is resolved. The deployed allowlist contains only the exact
+approved origin:
 
-`https://<site-instance>.dev.wix-code.com`
+`https://99b1b14d-b61d-4c75-b149-c3899470677a.dev.wix-code.com`
 
-The currently deployed Render API does not return `Access-Control-Allow-Origin`
-for that origin, so the browser blocks the otherwise successful skin response.
-The widget consequently remains in its safe API error state and cannot emit live
-result items to the native repeater.
+The first post-deployment browser run confirmed the custom-element controller
+loaded the 1,475-record catalogue, but the native repeater still showed its
+design-time FAMAS samples. The emitted event was traced to the React shadow
+content rather than the custom-element host. Commit `b27ce0f` moves dispatch to
+the host and adds a regression test; Wix test version `1.6.0` contains that fix.
 
-A narrow repository fix has been prepared and tested. It permits only HTTPS
-hosts ending in `.dev.wix-code.com`, while continuing to reject insecure and
-lookalike origins. Deploying that change to Render requires explicit approval.
+The local browser automation connection reset during the long Render deployment
+wait, and the Windows fallback could not attach because of a local permission
+error. Consequently, the required post-1.6.0 desktop/tablet screenshots and
+native interaction checks could not be completed in this run. The legacy CSS
+renderer remains enabled by design until this final proof is obtained.
 
 ## Verification completed locally
 
-- Full tests: 115 passed, 0 failed.
+- Full tests: 117 passed, 0 failed.
 - TypeScript: no errors.
 - Wix app build: passed.
 - Public API: `/api/skins` returned 200 with `X-Total-Count: 1475`.
 - Public API: `Access-Control-Expose-Headers: X-Total-Count` is present.
 - Public API: `/api/skins/filters` returned 200.
-- Wix development-origin CORS test: passes locally after the narrow fix.
-- Insecure and lookalike Wix development origins: rejected by tests.
+- Exact Wix development-origin CORS: passed locally and against production.
+- Other Wix tenants, HTTP, malformed, insecure and lookalike origins: rejected.
 
-## Deferred until the approved Render test deployment
+## Deferred until browser QA can resume
 
 - Confirm native result data reaches the repeater.
 - Confirm card selection and selected-state restoration.
@@ -88,7 +95,7 @@ lookalike origins. Deploying that change to Render requires explicit approval.
 11. Duplication: no second API/filter/sort state pipeline was introduced. The
     legacy CSS renderer is temporarily retained solely for migration safety.
 12. Abuse/enumeration: bounded existing pagination is retained. The new CORS
-    allowance is suffix- and protocol-validated rather than a wildcard.
+    allowance is one exact HTTPS origin rather than a wildcard or suffix rule.
 
 ## Separate security-hardening follow-up
 
