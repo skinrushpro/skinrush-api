@@ -1,0 +1,27 @@
+.page {
+  display: grid;
+  gap: 1.25rem;
+  padding-block: clamp(3rem, 7vw, 6rem);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--colour-accent);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.page h1 {
+  margin: 0;
+  font-size: clamp(2.75rem, 7vw, 5.25rem);
+  line-height: 1;
+}
+
+.intro {
+  max-width: 48rem;
+  margin: 0;
+  color: var(--colour-text-muted);
+  line-height: 1.65;
+}

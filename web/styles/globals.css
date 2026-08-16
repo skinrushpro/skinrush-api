@@ -1,0 +1,55 @@
+:root {
+  --colour-background: #0a0014;
+  --colour-surface: #382051;
+  --colour-surface-raised: #2d1a38;
+  --colour-accent: #00f0ff;
+  --colour-border: rgb(255 255 255 / 14%);
+  --colour-text: #ffffff;
+  --colour-text-muted: #d9cde2;
+  --font-display: "OWNERS TRIAL", "Arial Narrow", sans-serif;
+  --font-body: "Bitter", Georgia, serif;
+  --site-width: 78rem;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 48rem;
+  background: var(--colour-background);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--colour-text);
+  background:
+    radial-gradient(circle at 75% 10%, rgb(56 32 81 / 55%), transparent 35rem),
+    var(--colour-background);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+a {
+  color: inherit;
+}
+
+.site-shell {
+  width: min(100% - 4rem, var(--site-width));
+  margin-inline: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a {
+    transition: color 150ms ease, box-shadow 150ms ease;
+  }
+}
