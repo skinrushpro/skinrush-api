@@ -5,15 +5,20 @@ import {
   CatalogueError,
   buildUpstreamUrl,
   createCatalogueResponse,
+  createFilterOptionsResponse,
   fetchCatalogue,
 } from "../lib/catalogue.ts";
-import { parseCataloguePage } from "../lib/catalogue-contract.ts";
+import {
+  parseCataloguePage,
+  parseFilterOptions,
+} from "../lib/catalogue-contract.ts";
 
 const API_ORIGIN = "https://skinrush-api.example";
 
 test("the upstream URL has a fixed destination and only forwards approved parameters", () => {
   const input = new URLSearchParams({
     search: "redline",
+    sort: "rarity_desc",
     weapon: "AK-47",
     limit: "10",
     offset: "20",
@@ -23,7 +28,7 @@ test("the upstream URL has a fixed destination and only forwards approved parame
 
   assert.equal(
     url.toString(),
-    "https://skinrush-api.example/api/skins?search=redline&weapon=AK-47&limit=10&offset=20",
+    "https://skinrush-api.example/api/skins?search=redline&sort=rarity_desc&weapon=AK-47&limit=10&offset=20",
   );
 });
 
@@ -201,5 +206,46 @@ test("the browser contract accepts only a complete minimal catalogue page", () =
   assert.equal(parseCataloguePage({
     items: [{ id: "skin-3", name: "Missing weapon", rarity: null }],
     total: 1,
+  }), null);
+});
+
+test("the filter-options route forwards to the fixed upstream endpoint and minimizes data", async () => {
+  const fetchImplementation: typeof fetch = async (input) => {
+    assert.equal(input.toString(), "https://skinrush-api.example/api/skins/filters");
+    return new Response(JSON.stringify({
+      weapons: ["AK-47"],
+      collections: [{ id: "phoenix", name: "The Phoenix Collection", private: "drop" }],
+      cases: [{ id: "case-1", name: "Phoenix Case", sourceType: "case", private: "drop" }],
+      sourceTypes: ["case"],
+      rarities: ["Covert"],
+      wears: [{ name: "Factory New", min: 0, max: 0.07, maxInclusive: false, private: "drop" }],
+      private: "drop",
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+
+  const response = await createFilterOptionsResponse({
+    apiBaseUrl: API_ORIGIN,
+    fetchImplementation,
+  });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    weapons: ["AK-47"],
+    collections: [{ id: "phoenix", name: "The Phoenix Collection" }],
+    cases: [{ id: "case-1", name: "Phoenix Case", sourceType: "case" }],
+    sourceTypes: ["case"],
+    rarities: ["Covert"],
+    wears: [{ name: "Factory New", min: 0, max: 0.07, maxInclusive: false }],
+  });
+});
+
+test("the browser rejects malformed filter options", () => {
+  assert.equal(parseFilterOptions({
+    weapons: ["AK-47"],
+    collections: [],
+    cases: [],
+    sourceTypes: [],
+    rarities: [],
+    wears: [{ name: "Factory New", min: 0, max: "0.07", maxInclusive: false }],
   }), null);
 });

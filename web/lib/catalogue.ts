@@ -1,11 +1,14 @@
 import {
+  parseFilterOptions,
   parsePublicSkin,
   type CataloguePage,
+  type FilterOptions,
   type PublicSkin,
 } from "./catalogue-contract.ts";
 
 export const CATALOGUE_QUERY_PARAMETERS = [
   "search",
+  "sort",
   "weapon",
   "collection",
   "case",
@@ -192,5 +195,55 @@ export async function createCatalogueResponse(
         headers: { "Cache-Control": "no-store" },
       },
     );
+  }
+}
+
+export async function fetchFilterOptions({
+  apiBaseUrl,
+  fetchImplementation = fetch,
+}: CatalogueOptions): Promise<FilterOptions> {
+  const upstreamUrl = new URL("/api/skins/filters", configuredApiOrigin(apiBaseUrl));
+  let response: Response;
+  try {
+    response = await fetchImplementation(upstreamUrl, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    throw new CatalogueError(502, "CATALOGUE_UNAVAILABLE", "The skin catalogue is temporarily unavailable.");
+  }
+  if (!response.ok) {
+    throw new CatalogueError(502, "CATALOGUE_UNAVAILABLE", "The skin catalogue is temporarily unavailable.");
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new CatalogueError(502, "INVALID_UPSTREAM_RESPONSE", "The skin catalogue returned an invalid response.");
+  }
+  const options = parseFilterOptions(body);
+  if (!options) {
+    throw new CatalogueError(502, "INVALID_UPSTREAM_RESPONSE", "The skin catalogue returned an invalid response.");
+  }
+  return options;
+}
+
+export async function createFilterOptionsResponse(options: CatalogueOptions): Promise<Response> {
+  try {
+    return Response.json(await fetchFilterOptions(options), {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (error) {
+    const catalogueError = error instanceof CatalogueError
+      ? error
+      : new CatalogueError(500, "INTERNAL_ERROR", "The catalogue request could not be completed.");
+    return Response.json({
+      error: { code: catalogueError.code, message: catalogueError.message },
+    }, {
+      status: catalogueError.status,
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 }
