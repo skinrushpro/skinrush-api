@@ -12,6 +12,11 @@ import ReactDOM from 'react-dom';
 import reactToWebComponent from 'react-to-webcomponent';
 import { SkinApiClient } from './api';
 import {
+  createResultsBridgePayload,
+  dispatchResultsBridgeEvent,
+  dispatchSkinrushCommand,
+} from './bridge-contract';
+import {
   findRowEndIndex,
   SkinWidgetController,
   type ControllerSnapshot,
@@ -30,6 +35,7 @@ const EMPTY_OPTIONS: FilterOptions = {
 interface Props {
   apiBaseUrl?: string;
   pageSize?: number;
+  skinrushCommand?: string;
 }
 
 function initialSnapshot(pageSize: number): ControllerSnapshot {
@@ -87,6 +93,7 @@ function listPatch(
 const CustomElement: FC<Props> = ({
   apiBaseUrl = DEFAULT_API_BASE_URL,
   pageSize: pageSizeProp,
+  skinrushCommand,
 }) => {
   const pageSize = boundedPageSize(pageSizeProp);
   const [snapshot, setSnapshot] = useState<ControllerSnapshot>(() => initialSnapshot(pageSize));
@@ -94,6 +101,8 @@ const CustomElement: FC<Props> = ({
   const [layoutRevision, setLayoutRevision] = useState(0);
   const controllerRef = useRef<SkinWidgetController | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const bridgeRevisionRef = useRef(0);
+  const commandRevisionRef = useRef(-1);
 
   useEffect(() => {
     const controller = new SkinWidgetController({
@@ -109,6 +118,24 @@ const CustomElement: FC<Props> = ({
       controllerRef.current = null;
     };
   }, [apiBaseUrl, pageSize]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    bridgeRevisionRef.current += 1;
+    const payload = createResultsBridgePayload(snapshot, bridgeRevisionRef.current);
+    dispatchResultsBridgeEvent(root, payload);
+  }, [snapshot]);
+
+  useEffect(() => {
+    const controller = controllerRef.current;
+    if (!controller) return;
+    commandRevisionRef.current = dispatchSkinrushCommand(
+      controller,
+      skinrushCommand ?? null,
+      commandRevisionRef.current,
+    );
+  }, [skinrushCommand, snapshot]);
 
   useLayoutEffect(() => {
     if (!snapshot.selectedId || !rootRef.current) return;
@@ -224,6 +251,7 @@ const customElement = reactToWebComponent(CustomElement, React, ReactDOM as any,
   props: {
     apiBaseUrl: 'string',
     pageSize: 'number',
+    skinrushCommand: 'string',
   },
 });
 

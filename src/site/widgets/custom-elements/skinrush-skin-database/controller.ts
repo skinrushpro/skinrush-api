@@ -6,6 +6,7 @@ import {
   serialiseFilterState,
 } from './filter-state';
 import type { FilterOptions, FilterState, SkinPage, SkinResult } from './types';
+import type { SourceKind } from './bridge-contract';
 
 type FilterPatch = Partial<Omit<FilterState, 'limit' | 'offset'>>;
 type RemovableKey = Parameters<typeof removeFilter>[1];
@@ -225,6 +226,14 @@ export class SkinWidgetController {
 
   select(id: string): void {
     this.#set({ selectedId: this.#snapshot.selectedId === id ? null : id });
+  }
+
+  applySourceFilter(kind: SourceKind, sourceId: string): void {
+    if (!sourceId.trim()) return;
+    const key = kind === 'case' ? 'cases' : 'collections';
+    this.update({
+      [key]: [...new Set([...this.#snapshot.state[key], sourceId])],
+    }, false);
   }
 
   retry(): void {

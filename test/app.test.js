@@ -41,6 +41,7 @@ for (const origin of [
   'https://www.skinrush.pro',
   'https://editor.wix.com',
   'https://hyperdesignagency-skinrushnet.editor.wix.com',
+  'https://99b1b14d-b61d-4c75-b149-c3899470677a.dev.wix-code.com',
   'https://preview.wixsite.com',
   'http://localhost:5173',
   'http://localhost:5174'
@@ -82,7 +83,29 @@ test('CORS rejects lookalike and insecure Wix editor origins', async () => {
   const baseUrl = await startApp();
   for (const origin of [
     'https://editor.wix.com.attacker.example',
-    'http://tenant.editor.wix.com'
+    'https://dev.wix-code.com.evil.example',
+    'https://evildev.wix-code.com',
+    'https://wix-code.com.evil.example',
+    'https://dev-wix-code.com',
+    'https://another-site.dev.wix-code.com',
+    'https://tenant.dev.wix-code.com.attacker.example',
+    'http://tenant.editor.wix.com',
+    'http://tenant.dev.wix-code.com',
+    'http://99b1b14d-b61d-4c75-b149-c3899470677a.dev.wix-code.com'
+  ]) {
+    const response = await fetch(`${baseUrl}/api/hello`, {
+      headers: { Origin: origin }
+    });
+    assert.equal(response.headers.get('access-control-allow-origin'), null);
+  }
+});
+
+test('CORS malformed origins fail closed', async () => {
+  const baseUrl = await startApp();
+  for (const origin of [
+    'not a URL',
+    'https://[invalid',
+    '://dev.wix-code.com'
   ]) {
     const response = await fetch(`${baseUrl}/api/hello`, {
       headers: { Origin: origin }
