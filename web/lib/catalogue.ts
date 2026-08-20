@@ -5,10 +5,12 @@ import {
   type FilterOptions,
   type PublicSkin,
 } from "./catalogue-contract.ts";
+import { isItemCategory } from "./item-category.ts";
 
 export const CATALOGUE_QUERY_PARAMETERS = [
   "search",
   "sort",
+  "category",
   "weapon",
   "collection",
   "case",
@@ -98,6 +100,13 @@ export function buildUpstreamUrl(params: URLSearchParams, apiBaseUrl: string): U
   for (const key of params.keys()) {
     if (!QUERY_PARAMETER_SET.has(key)) {
       invalidQuery(key, "is not supported");
+    }
+  }
+
+  for (const value of params.getAll("category").flatMap((item) => item.split(","))) {
+    const category = value.trim();
+    if (category && !isItemCategory(category)) {
+      invalidQuery("category", `contains an unsupported value: ${category}`);
     }
   }
 

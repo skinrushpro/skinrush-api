@@ -1,4 +1,5 @@
 import type { CataloguePage, FilterOptions } from "./catalogue-contract.ts";
+import { isItemCategory, type ItemCategory } from "./item-category.ts";
 import {
   clearFilters,
   createDefaultFilterState,
@@ -43,7 +44,7 @@ export interface CatalogueSnapshot {
 }
 
 const EMPTY_OPTIONS: FilterOptions = {
-  weapons: [], collections: [], cases: [], sourceTypes: [], rarities: [], wears: [],
+  weapons: [], weaponCategories: [], collections: [], cases: [], sourceTypes: [], rarities: [], wears: [],
 };
 const DEFAULT_SCHEDULER: SchedulerPort = {
   set: (callback, delay) => window.setTimeout(callback, delay),
@@ -77,6 +78,14 @@ export class CatalogueController {
   }
 
   get snapshot() { return this.#snapshot; }
+  get availableWeapons() {
+    if (this.#snapshot.state.categories.length === 0) return this.#snapshot.options.weapons;
+    const categories = new Set(this.#snapshot.state.categories);
+    const allowed = new Set(this.#snapshot.options.weaponCategories
+      .filter(({ id }) => categories.has(id))
+      .flatMap(({ weapons }) => weapons));
+    return this.#snapshot.options.weapons.filter((weapon) => allowed.has(weapon));
+  }
   #set(patch: Partial<CatalogueSnapshot>) {
     this.#snapshot = { ...this.#snapshot, ...patch };
     this.#onChange(this.#snapshot);
@@ -146,10 +155,35 @@ export class CatalogueController {
   }
 
   toggleListValue(key: ListFilterKey, value: string) {
+    if (key === "categories") {
+      if (isItemCategory(value)) this.toggleCategory(value);
+      return;
+    }
     const current = this.#snapshot.state[key];
     this.update({ [key]: current.includes(value) ? current.filter((item) => item !== value) : [...current, value] }, false);
   }
+  toggleCategory(value: ItemCategory) {
+    const current = this.#snapshot.state.categories;
+    const categories = current.includes(value)
+      ? current.filter((item) => item !== value)
+      : [...current, value];
+    const allowed = categories.length === 0
+      ? null
+      : new Set(this.#snapshot.options.weaponCategories
+        .filter(({ id }) => categories.includes(id))
+        .flatMap(({ weapons }) => weapons));
+    this.update({
+      categories,
+      weapons: allowed
+        ? this.#snapshot.state.weapons.filter((weapon) => allowed.has(weapon))
+        : this.#snapshot.state.weapons,
+    }, false);
+  }
   remove(key: ListFilterKey | ScalarFilterKey, value?: string) {
+    if (key === "categories" && value) {
+      this.toggleCategory(value as ItemCategory);
+      return;
+    }
     this.#snapshot = { ...this.#snapshot, state: removeFilter(this.#snapshot.state, key, value) };
     this.#writeHistory(); this.#onChange(this.#snapshot); this.#schedule(false);
   }

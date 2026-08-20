@@ -19,6 +19,7 @@ test("the upstream URL has a fixed destination and only forwards approved parame
   const input = new URLSearchParams({
     search: "redline",
     sort: "rarity_desc",
+    category: "rifles,knives",
     weapon: "AK-47",
     limit: "10",
     offset: "20",
@@ -28,7 +29,7 @@ test("the upstream URL has a fixed destination and only forwards approved parame
 
   assert.equal(
     url.toString(),
-    "https://skinrush-api.example/api/skins?search=redline&sort=rarity_desc&weapon=AK-47&limit=10&offset=20",
+    "https://skinrush-api.example/api/skins?search=redline&sort=rarity_desc&category=rifles%2Cknives&weapon=AK-47&limit=10&offset=20",
   );
 });
 
@@ -46,6 +47,8 @@ for (const [query, field] of [
   ["limit=2.5", "limit"],
   ["offset=-1", "offset"],
   ["offset=next", "offset"],
+  ["category=agents", "category"],
+  ["category=rifles,containers", "category"],
 ] as const) {
   test(`the BFF rejects unsafe or invalid ${field} input`, () => {
     assert.throws(
@@ -214,6 +217,15 @@ test("the filter-options route forwards to the fixed upstream endpoint and minim
     assert.equal(input.toString(), "https://skinrush-api.example/api/skins/filters");
     return new Response(JSON.stringify({
       weapons: ["AK-47"],
+      weaponCategories: [
+        { id: "rifles", name: "Rifles", weapons: ["AK-47"], private: "drop" },
+        { id: "pistols", name: "Pistols", weapons: [] },
+        { id: "smgs", name: "SMGs", weapons: [] },
+        { id: "heavy", name: "Heavy", weapons: [] },
+        { id: "knives", name: "Knives", weapons: [] },
+        { id: "gloves", name: "Gloves", weapons: [] },
+        { id: "equipment", name: "Equipment", weapons: ["Zeus x27"] },
+      ],
       collections: [{ id: "phoenix", name: "The Phoenix Collection", private: "drop" }],
       cases: [{ id: "case-1", name: "Phoenix Case", sourceType: "case", private: "drop" }],
       sourceTypes: ["case"],
@@ -231,6 +243,15 @@ test("the filter-options route forwards to the fixed upstream endpoint and minim
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     weapons: ["AK-47"],
+    weaponCategories: [
+      { id: "rifles", name: "Rifles", weapons: ["AK-47"] },
+      { id: "pistols", name: "Pistols", weapons: [] },
+      { id: "smgs", name: "SMGs", weapons: [] },
+      { id: "heavy", name: "Heavy", weapons: [] },
+      { id: "knives", name: "Knives", weapons: [] },
+      { id: "gloves", name: "Gloves", weapons: [] },
+      { id: "equipment", name: "Equipment", weapons: ["Zeus x27"] },
+    ],
     collections: [{ id: "phoenix", name: "The Phoenix Collection" }],
     cases: [{ id: "case-1", name: "Phoenix Case", sourceType: "case" }],
     sourceTypes: ["case"],
@@ -242,6 +263,7 @@ test("the filter-options route forwards to the fixed upstream endpoint and minim
 test("the browser rejects malformed filter options", () => {
   assert.equal(parseFilterOptions({
     weapons: ["AK-47"],
+    weaponCategories: [],
     collections: [],
     cases: [],
     sourceTypes: [],

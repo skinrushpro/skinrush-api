@@ -1,3 +1,5 @@
+import { isItemCategory, type ItemCategory } from "./item-category.ts";
+
 export const SKIN_SORTS = [
   "weapon_asc", "name_asc", "rarity_desc", "rarity_asc", "float_min_asc", "float_max_desc",
 ] as const;
@@ -7,6 +9,7 @@ export const DEFAULT_SKIN_SORT: SkinSort = "weapon_asc";
 export interface FilterState {
   sort: SkinSort;
   search: string;
+  categories: ItemCategory[];
   weapons: string[];
   collections: string[];
   cases: string[];
@@ -21,16 +24,20 @@ export interface FilterState {
   offset: number;
 }
 
-export type ListFilterKey = "weapons" | "collections" | "cases" | "sourceTypes" | "rarities" | "wears";
+export type ListFilterKey = "categories" | "weapons" | "collections" | "cases" | "sourceTypes" | "rarities" | "wears";
 export type ScalarFilterKey = "search" | "stattrak" | "souvenir" | "floatMin" | "floatMax";
 
 const OWNED_KEYS = [
-  "search", "sort", "weapon", "collection", "case", "source_type", "rarity", "wear",
+  "search", "sort", "category", "weapon", "collection", "case", "source_type", "rarity", "wear",
   "stattrak", "souvenir", "float_min", "float_max", "limit", "offset",
 ] as const;
 
 function parseList(value: string | null): string[] {
   return value ? [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))] : [];
+}
+
+function parseCategories(value: string | null): ItemCategory[] {
+  return parseList(value).filter(isItemCategory);
 }
 
 function parseBoolean(value: string | null): boolean | null {
@@ -56,7 +63,7 @@ function isSkinSort(value: string | null): value is SkinSort {
 
 export function createDefaultFilterState(pageSize = 25): FilterState {
   return {
-    sort: DEFAULT_SKIN_SORT, search: "", weapons: [], collections: [], cases: [], sourceTypes: [],
+    sort: DEFAULT_SKIN_SORT, search: "", categories: [], weapons: [], collections: [], cases: [], sourceTypes: [],
     rarities: [], wears: [], stattrak: null, souvenir: null, floatMin: null, floatMax: null,
     limit: pageSize, offset: 0,
   };
@@ -73,6 +80,7 @@ export function parseFilterState(params: URLSearchParams, pageSize = 25): Filter
   return {
     sort: isSkinSort(sort) ? sort : DEFAULT_SKIN_SORT,
     search: params.get("search")?.trim() || "",
+    categories: parseCategories(params.get("category")),
     weapons: parseList(params.get("weapon")),
     collections: parseList(params.get("collection")),
     cases: parseList(params.get("case")),
@@ -100,6 +108,7 @@ export function serialiseFilterState(
   for (const key of OWNED_KEYS) params.delete(key);
   if (state.sort !== DEFAULT_SKIN_SORT) params.set("sort", state.sort);
   if (state.search.trim()) params.set("search", state.search.trim());
+  setList(params, "category", state.categories);
   setList(params, "weapon", state.weapons);
   setList(params, "collection", state.collections);
   setList(params, "case", state.cases);
@@ -120,7 +129,7 @@ export function removeFilter(
   key: ListFilterKey | ScalarFilterKey,
   value?: string,
 ): FilterState {
-  if (["weapons", "collections", "cases", "sourceTypes", "rarities", "wears"].includes(key)) {
+  if (["categories", "weapons", "collections", "cases", "sourceTypes", "rarities", "wears"].includes(key)) {
     const listKey = key as ListFilterKey;
     return { ...state, [listKey]: state[listKey].filter((item) => item !== value), offset: 0 };
   }

@@ -14,6 +14,7 @@ test("filter state survives a readable URL round trip", () => {
   const state = {
     sort: "rarity_desc",
     search: "red line",
+    categories: ["rifles", "knives"],
     weapons: ["AK-47", "AWP"],
     collections: ["the_falchion_collection"],
     cases: [],
@@ -31,15 +32,25 @@ test("filter state survives a readable URL round trip", () => {
 
   assert.equal(params.get("ref"), "nav");
   assert.equal(params.get("weapon"), "AK-47,AWP");
+  assert.equal(params.get("category"), "rifles,knives");
   assert.equal(params.get("sort"), "rarity_desc");
   assert.deepEqual(parseFilterState(params), state);
 });
 
 test("invalid URL values fall back safely", () => {
   const state = parseFilterState(new URLSearchParams(
-    "sort=price_desc&float_min=-1&float_max=later&limit=500&offset=-4&stattrak=yes",
+    "sort=price_desc&category=agents&float_min=-1&float_max=later&limit=500&offset=-4&stattrak=yes",
   ));
   assert.deepEqual(state, createDefaultFilterState());
+});
+
+test("existing weapon-only URLs round-trip without adding a derived category", () => {
+  const original = new URLSearchParams("weapon=Karambit");
+  const state = parseFilterState(original);
+
+  assert.deepEqual(state.categories, []);
+  assert.deepEqual(state.weapons, ["Karambit"]);
+  assert.equal(serialiseFilterState(state).toString(), "weapon=Karambit");
 });
 
 test("reversed float bounds are removed together", () => {
@@ -52,12 +63,18 @@ test("removing values resets pagination and clear preserves sort", () => {
   const state = {
     ...createDefaultFilterState(),
     sort: "name_asc",
+    categories: ["rifles", "knives"],
     weapons: ["AK-47", "AWP"],
     offset: 50,
   } satisfies FilterState;
   assert.deepEqual(removeFilter(state, "weapons", "AK-47"), {
     ...state,
     weapons: ["AWP"],
+    offset: 0,
+  });
+  assert.deepEqual(removeFilter(state, "categories", "knives"), {
+    ...state,
+    categories: ["rifles"],
     offset: 0,
   });
   assert.deepEqual(clearFilters(state), {

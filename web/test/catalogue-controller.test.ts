@@ -9,7 +9,17 @@ import { createDefaultFilterState, type FilterState } from "../lib/filter-state.
 import type { CataloguePage, FilterOptions } from "../lib/catalogue-contract.ts";
 
 const options: FilterOptions = {
-  weapons: [], collections: [], cases: [], sourceTypes: [], rarities: [], wears: [],
+  weapons: ["AK-47", "AWP", "Butterfly Knife", "Karambit", "Zeus x27"],
+  weaponCategories: [
+    { id: "rifles", name: "Rifles", weapons: ["AK-47", "AWP"] },
+    { id: "pistols", name: "Pistols", weapons: [] },
+    { id: "smgs", name: "SMGs", weapons: [] },
+    { id: "heavy", name: "Heavy", weapons: [] },
+    { id: "knives", name: "Knives", weapons: ["Butterfly Knife", "Karambit"] },
+    { id: "gloves", name: "Gloves", weapons: [] },
+    { id: "equipment", name: "Equipment", weapons: ["Zeus x27"] },
+  ],
+  collections: [], cases: [], sourceTypes: [], rarities: [], wears: [],
 };
 
 function deferred<T>() {
@@ -105,6 +115,54 @@ test("sort, list toggles, clear, pagination, and popstate share one URL pipeline
   h.setParams("campaign=summer&rarity=Covert");
   h.pop();
   assert.deepEqual(h.searches.at(-1)?.state.rarities, ["Covert"]);
+});
+
+test("active category changes remove incompatible models and keep compatible ones", async () => {
+  const h = harness();
+  h.setParams("category=rifles,knives&weapon=AK-47,Karambit");
+  h.controller.connect();
+  await Promise.resolve();
+
+  h.controller.toggleCategory("knives");
+
+  assert.deepEqual(h.controller.snapshot.state.categories, ["rifles"]);
+  assert.deepEqual(h.controller.snapshot.state.weapons, ["AK-47"]);
+  assert.equal(h.params().get("category"), "rifles");
+  assert.equal(h.params().get("weapon"), "AK-47");
+});
+
+test("compatible models survive multi-category changes and no category restores all choices", async () => {
+  const h = harness();
+  h.setParams("category=rifles&weapon=AK-47");
+  h.controller.connect();
+  await Promise.resolve();
+
+  h.controller.toggleCategory("knives");
+  assert.deepEqual(h.controller.snapshot.state.categories, ["rifles", "knives"]);
+  assert.deepEqual(h.controller.snapshot.state.weapons, ["AK-47"]);
+
+  h.controller.toggleCategory("rifles");
+  assert.deepEqual(h.controller.snapshot.state.categories, ["knives"]);
+  assert.deepEqual(h.controller.snapshot.state.weapons, []);
+
+  h.controller.toggleCategory("knives");
+  assert.deepEqual(h.controller.snapshot.state.categories, []);
+  assert.deepEqual(h.controller.availableWeapons, options.weapons);
+});
+
+test("category chip removal and popstate use the existing history pipeline", async () => {
+  const h = harness();
+  h.setParams("campaign=summer&category=knives,equipment&weapon=Karambit,Zeus+x27");
+  h.controller.connect();
+  await Promise.resolve();
+
+  h.controller.remove("categories", "knives");
+  assert.deepEqual(h.controller.snapshot.state.categories, ["equipment"]);
+  assert.deepEqual(h.controller.snapshot.state.weapons, ["Zeus x27"]);
+  h.setParams("campaign=summer&category=rifles&weapon=AK-47");
+  h.pop();
+  assert.deepEqual(h.searches.at(-1)?.state.categories, ["rifles"]);
+  assert.deepEqual(h.searches.at(-1)?.state.weapons, ["AK-47"]);
 });
 
 test("disconnect aborts work and prevents future popstate requests", () => {

@@ -1,3 +1,5 @@
+import { ITEM_CATEGORIES, isItemCategory, type ItemCategory } from "./item-category.ts";
+
 export interface PublicSkin {
   id: string;
   name: string;
@@ -28,11 +30,18 @@ export interface WearOption {
 
 export interface FilterOptions {
   weapons: string[];
+  weaponCategories: WeaponCategoryOption[];
   collections: NamedOption[];
   cases: CaseOption[];
   sourceTypes: string[];
   rarities: string[];
   wears: WearOption[];
+}
+
+export interface WeaponCategoryOption {
+  id: ItemCategory;
+  name: string;
+  weapons: string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -82,7 +91,7 @@ export function parseFilterOptions(value: unknown): FilterOptions | null {
   const weapons = stringList(value.weapons);
   const sourceTypes = stringList(value.sourceTypes);
   const rarities = stringList(value.rarities);
-  if (!weapons || !sourceTypes || !rarities) return null;
+  if (!weapons || !sourceTypes || !rarities || !Array.isArray(value.weaponCategories)) return null;
   if (!Array.isArray(value.collections) || !Array.isArray(value.cases) || !Array.isArray(value.wears)) {
     return null;
   }
@@ -91,6 +100,14 @@ export function parseFilterOptions(value: unknown): FilterOptions | null {
     && typeof item.id === "string" && typeof item.name === "string"
     ? { id: item.id, name: item.name }
     : null);
+  const weaponCategories = value.weaponCategories.map((item) => {
+    if (!isRecord(item) || typeof item.id !== "string" || !isItemCategory(item.id)) return null;
+    const expected = ITEM_CATEGORIES.find(({ id }) => id === item.id);
+    const categoryWeapons = stringList(item.weapons);
+    return expected && item.name === expected.name && categoryWeapons
+      ? { id: item.id, name: item.name, weapons: categoryWeapons }
+      : null;
+  });
   const cases = value.cases.map((item) => isRecord(item)
     && typeof item.id === "string" && typeof item.name === "string"
     && typeof item.sourceType === "string"
@@ -101,10 +118,15 @@ export function parseFilterOptions(value: unknown): FilterOptions | null {
     && typeof item.max === "number" && typeof item.maxInclusive === "boolean"
     ? { name: item.name, min: item.min, max: item.max, maxInclusive: item.maxInclusive }
     : null);
-  if ([...collections, ...cases, ...wears].some((item) => item === null)) return null;
+  if ([...weaponCategories, ...collections, ...cases, ...wears].some((item) => item === null)) return null;
+  if (
+    weaponCategories.length !== ITEM_CATEGORIES.length
+    || new Set(weaponCategories.map((item) => item?.id)).size !== ITEM_CATEGORIES.length
+  ) return null;
 
   return {
     weapons,
+    weaponCategories: weaponCategories as WeaponCategoryOption[],
     collections: collections as NamedOption[],
     cases: cases as CaseOption[],
     sourceTypes,

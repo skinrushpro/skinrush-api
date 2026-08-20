@@ -40,6 +40,7 @@ test('combined filters use fixed SQL fragments and replacements', async () => {
   const service = createSkinService({ sequelize: recorder.sequelize, Skin: {} });
   const query = parseSkinQuery({
     search: 'redline',
+    category: 'rifles,knives',
     weapon: 'AK-47,AWP',
     collection: 'the_falchion_collection',
     case: 'case-4091',
@@ -62,6 +63,7 @@ test('combined filters use fixed SQL fragments and replacements', async () => {
   assert.ok(listCall);
   assert.ok(countCall);
   assert.match(listCall.sql, /s\.weapon_name IN \(:weapons\)/);
+  assert.match(listCall.sql, /CASE[\s\S]+s\.item_type = 'knife'[\s\S]+s\.category_name = 'Rifles'[\s\S]+END IN \(:categories\)/);
   assert.match(listCall.sql, /EXISTS[\s\S]+skin_collections selected_sc/);
   assert.match(listCall.sql, /EXISTS[\s\S]+skin_cases selected_case/);
   assert.match(listCall.sql, /source_case\.source_type IN \(:sourceTypes\)/);
@@ -73,6 +75,7 @@ test('combined filters use fixed SQL fragments and replacements', async () => {
   assert.equal(listCall.sql.includes('AK-47'), false);
   assert.equal(listCall.options.replacements.search, '%redline%');
   assert.deepEqual(listCall.options.replacements.weapons, ['AK-47', 'AWP']);
+  assert.deepEqual(listCall.options.replacements.categories, ['rifles', 'knives']);
   assert.deepEqual(listCall.options.replacements.collections, ['the_falchion_collection']);
   assert.deepEqual(listCall.options.replacements.cases, ['case-4091']);
   assert.deepEqual(listCall.options.replacements.sourceTypes, ['souvenir_package']);
@@ -84,6 +87,34 @@ test('combined filters use fixed SQL fragments and replacements', async () => {
   assert.equal('limit' in countCall.options.replacements, false);
   assert.equal('offset' in countCall.options.replacements, false);
   assert.equal(countCall.options.replacements.search, '%redline%');
+  assert.deepEqual(countCall.options.replacements.categories, ['rifles', 'knives']);
+});
+
+test('category filtering uses authoritative fields before sorting and pagination', async () => {
+  const recorder = queryRecorder(sql => sql.includes('AS total') ? [{ total: 0 }] : []);
+  const service = createSkinService({ sequelize: recorder.sequelize, Skin: {} });
+
+  await service.search(parseSkinQuery({
+    category: 'rifles,knives,equipment',
+    weapon: 'AK-47,Karambit,Zeus x27',
+    limit: '25',
+    offset: '50'
+  }));
+
+  const listCall = recorder.calls.find(call => call.sql.includes('LIMIT :limit'));
+  assert.ok(listCall);
+  for (const fragment of [
+    "s.item_type = 'knife'", "s.item_type = 'gloves'",
+    "s.category_name = 'Rifles'", "s.category_name = 'Pistols'",
+    "s.category_name = 'SMGs'", "s.category_name = 'Heavy'",
+    "s.category_name = 'Equipment'"
+  ]) assert.equal(listCall.sql.includes(fragment), true);
+  assert.match(listCall.sql, /END IN \(:categories\)/);
+  assert.match(listCall.sql, /s\.weapon_name IN \(:weapons\)/);
+  assert.ok(listCall.sql.indexOf('END IN (:categories)') < listCall.sql.indexOf('ORDER BY'));
+  assert.ok(listCall.sql.indexOf('ORDER BY') < listCall.sql.indexOf('LIMIT :limit'));
+  assert.deepEqual(listCall.options.replacements.categories, ['rifles', 'knives', 'equipment']);
+  assert.deepEqual(listCall.options.replacements.weapons, ['AK-47', 'Karambit', 'Zeus x27']);
 });
 
 const expectedOrders = {
@@ -239,6 +270,10 @@ test('null relationship aggregates map to empty arrays', async () => {
 test('filter options use one query and preserve authoritative values', async () => {
   const recorder = queryRecorder(() => [{ options: {
     weapons: ['AK-47', 'AWP'],
+    weaponCategories: [
+      { id: 'rifles', name: 'Rifles', weapons: ['AK-47', 'AWP'] },
+      { id: 'equipment', name: 'Equipment', weapons: ['Zeus x27'] }
+    ],
     collections: [{ id: 'the_falchion_collection', name: 'The Falchion Collection' }],
     cases: [{ id: 'case-4091', name: 'Falchion Case', sourceType: 'case' }],
     sourceTypes: ['case', 'souvenir_package'],
@@ -251,6 +286,11 @@ test('filter options use one query and preserve authoritative values', async () 
   assert.equal(recorder.calls.length, 1);
   assert.match(recorder.calls[0].sql, /jsonb_build_object/);
   assert.deepEqual(result.weapons, ['AK-47', 'AWP']);
+  assert.deepEqual(result.weaponCategories, [
+    { id: 'rifles', name: 'Rifles', weapons: ['AK-47', 'AWP'] },
+    { id: 'equipment', name: 'Equipment', weapons: ['Zeus x27'] }
+  ]);
+  assert.match(recorder.calls[0].sql, /'equipment', 'Equipment'/);
   assert.deepEqual(result.collections[0], {
     id: 'the_falchion_collection',
     name: 'The Falchion Collection'

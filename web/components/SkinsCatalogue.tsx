@@ -5,11 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CatalogueApi } from "@/lib/catalogue-api";
 import { CatalogueController, type CatalogueSnapshot } from "@/lib/catalogue-controller";
 import { createDefaultFilterState, type ListFilterKey, type ScalarFilterKey } from "@/lib/filter-state";
+import type { ItemCategory } from "@/lib/item-category";
 import styles from "./SkinsCatalogue.module.css";
 
 const EMPTY_SNAPSHOT: CatalogueSnapshot = {
   state: createDefaultFilterState(),
-  options: { weapons: [], collections: [], cases: [], sourceTypes: [], rarities: [], wears: [] },
+  options: { weapons: [], weaponCategories: [], collections: [], cases: [], sourceTypes: [], rarities: [], wears: [] },
   items: [], total: 0, loading: true, error: null,
 };
 
@@ -75,7 +76,15 @@ export function SkinsCatalogue() {
   }, []);
 
   const listOptions = useMemo(() => ({
-    weapons: snapshot.options.weapons.map((value) => ({ value, label: value })),
+    categories: snapshot.options.weaponCategories.map(({ id, name }) => ({ value: id, label: name })),
+    weapons: snapshot.options.weapons
+      .filter((value) => {
+        if (snapshot.state.categories.length === 0) return true;
+        return snapshot.options.weaponCategories.some(({ id, weapons }) => (
+          snapshot.state.categories.includes(id) && weapons.includes(value)
+        ));
+      })
+      .map((value) => ({ value, label: value })),
     collections: snapshot.options.collections.map(({ id, name }) => ({ value: id, label: name })),
     cases: snapshot.options.cases.map(({ id, name }) => ({ value: id, label: name })),
     sourceTypes: snapshot.options.sourceTypes.map((value) => ({ value, label: value.replaceAll("_", " ") })),
@@ -86,11 +95,16 @@ export function SkinsCatalogue() {
   const chips = useMemo(() => {
     const output: Array<{ key: ListFilterKey | ScalarFilterKey; value?: string; label: string }> = [];
     if (snapshot.state.search) output.push({ key: "search", label: `Search: ${snapshot.state.search}` });
+    const categoryNames = new Map(snapshot.options.weaponCategories.map(({ id, name }) => [id, name]));
     for (const [key, label] of [
-      ["weapons", "Weapon"], ["collections", "Collection"], ["cases", "Case"],
+      ["categories", "Category"], ["weapons", "Item Type"], ["collections", "Collection"], ["cases", "Case"],
       ["sourceTypes", "Source"], ["rarities", "Rarity"], ["wears", "Wear"],
     ] as const) {
-      for (const value of snapshot.state[key]) output.push({ key, value, label: `${label}: ${value}` });
+      for (const value of snapshot.state[key]) output.push({
+        key,
+        value,
+        label: `${label}: ${key === "categories" ? categoryNames.get(value as ItemCategory) ?? value : value}`,
+      });
     }
     if (snapshot.state.stattrak !== null) output.push({ key: "stattrak", label: `StatTrak™: ${snapshot.state.stattrak ? "Yes" : "No"}` });
     if (snapshot.state.souvenir !== null) output.push({ key: "souvenir", label: `Souvenir: ${snapshot.state.souvenir ? "Yes" : "No"}` });
@@ -119,7 +133,8 @@ export function SkinsCatalogue() {
       </div>
 
       <div className={styles.filterGrid}>
-        <MultiFilter label="Weapon" filterKey="weapons" options={listOptions.weapons} selected={snapshot.state.weapons} onToggle={(key, value) => controllerRef.current?.toggleListValue(key, value)} />
+        <MultiFilter label="Category" filterKey="categories" options={listOptions.categories} selected={snapshot.state.categories} onToggle={(_, value) => controllerRef.current?.toggleCategory(value as ItemCategory)} />
+        <MultiFilter label="Item Type" filterKey="weapons" options={listOptions.weapons} selected={snapshot.state.weapons} onToggle={(key, value) => controllerRef.current?.toggleListValue(key, value)} />
         <MultiFilter label="Collection" filterKey="collections" options={listOptions.collections} selected={snapshot.state.collections} onToggle={(key, value) => controllerRef.current?.toggleListValue(key, value)} />
         <MultiFilter label="Case" filterKey="cases" options={listOptions.cases} selected={snapshot.state.cases} onToggle={(key, value) => controllerRef.current?.toggleListValue(key, value)} />
         <MultiFilter label="Source type" filterKey="sourceTypes" options={listOptions.sourceTypes} selected={snapshot.state.sourceTypes} onToggle={(key, value) => controllerRef.current?.toggleListValue(key, value)} />
