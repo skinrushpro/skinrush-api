@@ -82,6 +82,8 @@ exposed to approved cross-origin Wix clients.
 Supported query parameters:
 
 - `search`: partial, case-insensitive skin or weapon name match.
+- `category`: comma-separated values from `rifles`, `pistols`, `smgs`,
+  `heavy`, `knives`, `gloves`, and `equipment`.
 - `weapon`, `collection`, `case`, `source_type`, `rarity`, `wear`:
   comma-separated multi-select values.
 - `stattrak`, `souvenir`: `true` or `false`.
@@ -97,7 +99,9 @@ including 1.00. For example:
 GET /api/skins?weapon=AK-47%2CAWP&rarity=Classified&wear=Factory%20New&limit=25
 ```
 
-Available authoritative filter values are returned in one response:
+Available authoritative filter values are returned in one response. The
+existing `weapons` array is preserved, and `weaponCategories` groups those
+exact weapon/model values under the seven player-facing categories:
 
 ```http
 GET /api/skins/filters

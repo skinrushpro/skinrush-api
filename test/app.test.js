@@ -219,6 +219,41 @@ test('filtered skins remain an array and expose total count cross-origin', async
   assert.equal(receivedQuery.offset, 0);
 });
 
+test('GET /api/skins forwards category and weapon as independent filters', async () => {
+  let receivedQuery;
+  const skinService = {
+    async search(query) {
+      receivedQuery = query;
+      return { items: [], total: 0 };
+    }
+  };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(
+    `${baseUrl}/api/skins?category=knives,equipment&weapon=Karambit,Zeus%20x27`
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(receivedQuery.categories, ['knives', 'equipment']);
+  assert.deepEqual(receivedQuery.weapons, ['Karambit', 'Zeus x27']);
+});
+
+test('GET /api/skins rejects an unsupported category safely', async () => {
+  const skinService = { search: async () => assert.fail('service must not run') };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins?category=agents`);
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: 'INVALID_QUERY',
+      field: 'category',
+      message: 'category contains an unsupported value: agents'
+    }
+  });
+});
+
 test('GET /api/skins preserves false Boolean filters', async () => {
   let receivedQuery;
   const skinService = {
@@ -239,7 +274,14 @@ test('GET /api/skins preserves false Boolean filters', async () => {
 });
 
 test('GET /api/skins/filters returns authoritative filter options', async () => {
-  const expected = { weapons: ['AK-47'], wears: [] };
+  const expected = {
+    weapons: ['AK-47', 'Zeus x27'],
+    weaponCategories: [
+      { id: 'rifles', name: 'Rifles', weapons: ['AK-47'] },
+      { id: 'equipment', name: 'Equipment', weapons: ['Zeus x27'] }
+    ],
+    wears: []
+  };
   const skinService = { filterOptions: async () => expected };
   const baseUrl = await startApp({ skinService });
 
@@ -263,6 +305,37 @@ test('GET /api/skins rejects malformed query values', async () => {
       message: 'wear contains an unsupported value: Pristine'
     }
   });
+});
+
+test('GET /api/skins rejects an unsupported sort safely', async () => {
+  const skinService = { search: async () => assert.fail('service must not run') };
+  const baseUrl = await startApp({ skinService });
+
+  const response = await fetch(`${baseUrl}/api/skins?sort=price_desc`);
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: {
+      code: 'INVALID_QUERY',
+      field: 'sort',
+      message: 'sort contains an unsupported value: price_desc'
+    }
+  });
+});
+
+test('the same sorted URL produces the same ordered response', async () => {
+  const ordered = [{ id: 'a' }, { id: 'b' }];
+  const skinService = { search: async () => ({ items: ordered, total: 2 }) };
+  const baseUrl = await startApp({ skinService });
+  const url = `${baseUrl}/api/skins?weapon=AK-47&sort=name_asc&limit=25`;
+
+  const first = await fetch(url);
+  const second = await fetch(url);
+
+  assert.deepEqual(await first.json(), ordered);
+  assert.deepEqual(await second.json(), ordered);
+  assert.equal(first.headers.get('X-Total-Count'), '2');
+  assert.equal(second.headers.get('X-Total-Count'), '2');
 });
 
 test('filtered GET /api/skins hides service failure details', async (t) => {

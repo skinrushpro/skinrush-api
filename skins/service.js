@@ -1,6 +1,8 @@
 import { QueryTypes } from 'sequelize';
 
+import { SKIN_CATEGORIES, SKIN_CATEGORY_SQL, SKIN_CATEGORY_VALUES_SQL } from './category.js';
 import { WEAR_RANGES, getAvailableWears, getWearRange } from './wear.js';
+import { buildSkinOrder } from './sort.js';
 
 function buildWhere(query) {
   const conditions = [];
@@ -9,6 +11,10 @@ function buildWhere(query) {
   if (query.search) {
     conditions.push('(s.skin_name ILIKE :search OR s.weapon_name ILIKE :search)');
     replacements.search = `%${query.search}%`;
+  }
+  if (query.categories.length) {
+    conditions.push(`${SKIN_CATEGORY_SQL} IN (:categories)`);
+    replacements.categories = query.categories;
   }
   if (query.weapons.length) {
     conditions.push('s.weapon_name IN (:weapons)');
@@ -145,10 +151,31 @@ LEFT JOIN case_data cad ON cad.skin_id = s.skin_id
 `;
 
 const OPTIONS_SQL = `
+WITH classified_weapons AS (
+  SELECT DISTINCT s.weapon_name,
+         ${SKIN_CATEGORY_SQL} AS category_id
+  FROM skins s
+  WHERE s.weapon_name IS NOT NULL
+), category_definitions(category_id, category_name, sort_order) AS (
+  VALUES
+    ${SKIN_CATEGORY_VALUES_SQL}
+)
 SELECT jsonb_build_object(
   'weapons', (
     SELECT COALESCE(jsonb_agg(weapon_name ORDER BY weapon_name), '[]'::jsonb)
     FROM (SELECT DISTINCT weapon_name FROM skins WHERE weapon_name IS NOT NULL) values_
+  ),
+  'weaponCategories', (
+    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+      'id', definition.category_id,
+      'name', definition.category_name,
+      'weapons', COALESCE((
+        SELECT jsonb_agg(classified.weapon_name ORDER BY classified.weapon_name)
+        FROM classified_weapons classified
+        WHERE classified.category_id = definition.category_id
+      ), '[]'::jsonb)
+    ) ORDER BY definition.sort_order), '[]'::jsonb)
+    FROM category_definitions definition
   ),
   'collections', (
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
@@ -184,13 +211,15 @@ export function createSkinService({ sequelize, Skin }) {
 
     async search(query) {
       const { where, replacements } = buildWhere(query);
+      const order = buildSkinOrder(query);
       const listReplacements = {
         ...replacements,
+        ...order.replacements,
         limit: query.limit,
         offset: query.offset
       };
       const listSql = `${LIST_SQL}${where}
-ORDER BY s.weapon_name, s.skin_name, s.skin_id
+ORDER BY ${order.sql}
 LIMIT :limit OFFSET :offset`;
       const countSql = `SELECT COUNT(*)::integer AS total FROM skins s ${where}`;
 
@@ -216,6 +245,11 @@ LIMIT :limit OFFSET :offset`;
       const options = rows[0]?.options || {};
       return {
         weapons: options.weapons || [],
+        weaponCategories: options.weaponCategories || SKIN_CATEGORIES.map(category => ({
+          id: category.id,
+          name: category.name,
+          weapons: []
+        })),
         collections: options.collections || [],
         cases: options.cases || [],
         sourceTypes: options.sourceTypes || [],

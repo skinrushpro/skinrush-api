@@ -1,7 +1,11 @@
 import { getWearRange } from './wear.js';
+import { isSkinCategory } from './category.js';
+import { DEFAULT_SKIN_SORT, isSkinSort } from './sort.js';
 
 const recognisedKeys = new Set([
   'search',
+  'sort',
+  'category',
   'weapon',
   'collection',
   'case',
@@ -44,6 +48,13 @@ function nullableText(value) {
   const text = first(value);
   if (text === undefined || text === null) return null;
   return String(text).trim() || null;
+}
+
+function sortValue(value) {
+  const text = first(value);
+  if (text === undefined || text === null || text === '') return DEFAULT_SKIN_SORT;
+  if (isSkinSort(text)) return text;
+  throw new SkinQueryError('sort', `sort contains an unsupported value: ${text}`);
 }
 
 function booleanValue(field, value) {
@@ -93,6 +104,19 @@ function wears(value) {
   return values;
 }
 
+function categories(value) {
+  const values = list(value);
+  for (const name of values) {
+    if (!isSkinCategory(name)) {
+      throw new SkinQueryError(
+        'category',
+        `category contains an unsupported value: ${name}`
+      );
+    }
+  }
+  return values;
+}
+
 export function parseSkinQuery(rawQuery = {}) {
   const floatMin = floatValue('float_min', rawQuery.float_min);
   const floatMax = floatValue('float_max', rawQuery.float_max);
@@ -103,7 +127,9 @@ export function parseSkinQuery(rawQuery = {}) {
 
   return {
     enhanced: Object.keys(rawQuery).some(key => recognisedKeys.has(key)),
+    sort: sortValue(rawQuery.sort),
     search: nullableText(rawQuery.search),
+    categories: categories(rawQuery.category),
     weapons: list(rawQuery.weapon),
     collections: list(rawQuery.collection),
     cases: list(rawQuery.case),
@@ -132,4 +158,3 @@ export function parseSkinQuery(rawQuery = {}) {
     )
   };
 }
-

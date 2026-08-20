@@ -28,7 +28,9 @@ for (const [value, excluded, included] of boundaries) {
 test('skin query defaults preserve the legacy listing contract', () => {
   assert.deepEqual(parseSkinQuery({}), {
     enhanced: false,
+    sort: 'weapon_asc',
     search: null,
+    categories: [],
     weapons: [],
     collections: [],
     cases: [],
@@ -46,7 +48,9 @@ test('skin query defaults preserve the legacy listing contract', () => {
 
 test('skin query parses combined readable filters', () => {
   assert.deepEqual(parseSkinQuery({
+    sort: 'rarity_desc',
     search: '  redline ',
+    category: 'rifles,knives,rifles',
     weapon: 'AK-47,AWP,AK-47',
     collection: 'the_falchion_collection',
     case: 'case-4091,case-4001',
@@ -61,7 +65,9 @@ test('skin query parses combined readable filters', () => {
     offset: '50'
   }), {
     enhanced: true,
+    sort: 'rarity_desc',
     search: 'redline',
+    categories: ['rifles', 'knives'],
     weapons: ['AK-47', 'AWP'],
     collections: ['the_falchion_collection'],
     cases: ['case-4091', 'case-4001'],
@@ -77,9 +83,59 @@ test('skin query parses combined readable filters', () => {
   });
 });
 
+const supportedSorts = [
+  'weapon_asc',
+  'name_asc',
+  'rarity_desc',
+  'rarity_asc',
+  'float_min_asc',
+  'float_max_desc'
+];
+
+test('skin query defaults to weapon ordering', () => {
+  assert.equal(parseSkinQuery({}).sort, 'weapon_asc');
+});
+
+for (const sort of supportedSorts) {
+  test(`skin query accepts sort ${sort}`, () => {
+    const query = parseSkinQuery({ sort });
+    assert.equal(query.sort, sort);
+    assert.equal(query.enhanced, true);
+  });
+}
+
+test('skin query rejects an unsupported sort', () => {
+  assert.throws(
+    () => parseSkinQuery({ sort: 'price_desc' }),
+    error => error instanceof SkinQueryError
+      && error.field === 'sort'
+      && error.message === 'sort contains an unsupported value: price_desc'
+  );
+});
+
 test('array query values are flattened, trimmed, and deduplicated', () => {
   const query = parseSkinQuery({ weapon: ['AK-47, AWP', 'AWP', 'Glock-18'] });
   assert.deepEqual(query.weapons, ['AK-47', 'AWP', 'Glock-18']);
+});
+
+test('skin query accepts exactly the seven authoritative catalogue categories', () => {
+  const query = parseSkinQuery({
+    category: 'rifles,pistols,smgs,heavy,knives,gloves,equipment,rifles'
+  });
+
+  assert.deepEqual(query.categories, [
+    'rifles', 'pistols', 'smgs', 'heavy', 'knives', 'gloves', 'equipment'
+  ]);
+  assert.equal(query.enhanced, true);
+});
+
+test('skin query rejects an unsupported catalogue category', () => {
+  assert.throws(
+    () => parseSkinQuery({ category: 'agents' }),
+    error => error instanceof SkinQueryError
+      && error.field === 'category'
+      && error.message === 'category contains an unsupported value: agents'
+  );
 });
 
 test('an empty search remains null but opts into enhanced listing', () => {
@@ -120,4 +176,3 @@ test('skin query rejects a reversed float interval', () => {
       && error.message === 'float_min must not be greater than float_max'
   );
 });
-
