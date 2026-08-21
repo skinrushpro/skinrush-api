@@ -6,6 +6,7 @@ import { CatalogueApi } from "@/lib/catalogue-api";
 import { CatalogueController, type CatalogueSnapshot } from "@/lib/catalogue-controller";
 import { createDefaultFilterState, type ListFilterKey, type ScalarFilterKey } from "@/lib/filter-state";
 import type { ItemCategory } from "@/lib/item-category";
+import { SkinCard, type SkinCardClassNames } from "./SkinCard";
 import styles from "./SkinsCatalogue.module.css";
 
 const EMPTY_SNAPSHOT: CatalogueSnapshot = {
@@ -19,6 +20,14 @@ const SORT_OPTIONS = [
   ["rarity_desc", "Rarity high–low"], ["rarity_asc", "Rarity low–high"],
   ["float_min_asc", "Minimum float low–high"], ["float_max_desc", "Maximum float high–low"],
 ] as const;
+
+const SKIN_CARD_CLASS_NAMES = {
+  artwork: styles.artwork,
+  imageStage: styles.imageStage,
+  rarity: styles.rarity,
+  result: styles.result,
+  weapon: styles.weapon,
+} satisfies SkinCardClassNames;
 
 interface MultiFilterProps {
   label: string;
@@ -155,7 +164,7 @@ export function SkinsCatalogue() {
       {snapshot.error ? <div className={styles.status} role="alert"><p>{snapshot.error}</p><button type="button" onClick={() => controllerRef.current?.retry()}>Try again</button></div> : null}
       {snapshot.loading ? <p className={styles.loading} role="status">Loading the Skin Database…</p> : null}
       {!snapshot.loading && !snapshot.error && snapshot.items.length === 0 ? <p className={styles.status}>No skins match these filters.</p> : null}
-      {snapshot.items.length ? <section aria-labelledby="catalogue-results"><h2 className={styles.summary} id="catalogue-results">{snapshot.total.toLocaleString("en-GB")} skins found</h2><ul className={styles.results}>{snapshot.items.map((skin) => <li className={styles.result} key={skin.id}><span className={styles.weapon}>{skin.weapon}</span><strong>{skin.name}</strong><span className={styles.rarity}>{skin.rarity ?? "Unclassified"}</span></li>)}</ul><nav className={styles.pagination} aria-label="Skin results pages"><button type="button" disabled={snapshot.state.offset === 0 || snapshot.loading} onClick={() => controllerRef.current?.goToOffset(previousOffset)}>Previous</button><span>Results {snapshot.state.offset + 1}–{Math.min(nextOffset, snapshot.total)} of {snapshot.total.toLocaleString("en-GB")}</span><button type="button" disabled={nextOffset >= snapshot.total || snapshot.loading} onClick={() => controllerRef.current?.goToOffset(nextOffset)}>Next</button></nav></section> : null}
+      {snapshot.items.length ? <section aria-labelledby="catalogue-results"><h2 className={styles.summary} id="catalogue-results">{snapshot.total.toLocaleString("en-GB")} skins found</h2><ul className={styles.results}>{snapshot.items.map((skin) => <SkinCard classNames={SKIN_CARD_CLASS_NAMES} key={skin.id} skin={skin} />)}</ul><nav className={styles.pagination} aria-label="Skin results pages"><button type="button" disabled={snapshot.state.offset === 0 || snapshot.loading} onClick={() => controllerRef.current?.goToOffset(previousOffset)}>Previous</button><span>Results {snapshot.state.offset + 1}–{Math.min(nextOffset, snapshot.total)} of {snapshot.total.toLocaleString("en-GB")}</span><button type="button" disabled={nextOffset >= snapshot.total || snapshot.loading} onClick={() => controllerRef.current?.goToOffset(nextOffset)}>Next</button></nav></section> : null}
     </div>
   );
 }

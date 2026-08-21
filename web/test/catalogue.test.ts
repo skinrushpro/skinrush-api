@@ -101,6 +101,7 @@ test("catalogue responses expose only the current public DTO and preserve total 
       name: "AK-47 | Redline",
       weapon: "AK-47",
       rarity: "Classified",
+      image: "https://cdn.example/redline.png",
     }],
     total: 1842,
   });
@@ -154,6 +155,7 @@ test("the BFF response returns the public envelope and total header", async () =
       name: "AWP | Asiimov",
       weapon: "AWP",
       rarity: "Covert",
+      image: null,
     }]),
     {
       status: 200,
@@ -173,7 +175,7 @@ test("the BFF response returns the public envelope and total header", async () =
   assert.equal(response.headers.get("X-Total-Count"), "42");
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   assert.deepEqual(await response.json(), {
-    items: [{ id: "skin-2", name: "AWP | Asiimov", weapon: "AWP", rarity: "Covert" }],
+    items: [{ id: "skin-2", name: "AWP | Asiimov", weapon: "AWP", rarity: "Covert", image: null }],
     total: 42,
   });
 });
@@ -200,14 +202,18 @@ test("the BFF response exposes safe errors without upstream details", async () =
 
 test("the browser contract accepts only a complete minimal catalogue page", () => {
   assert.deepEqual(parseCataloguePage({
-    items: [{ id: "skin-3", name: "M4A4 | Neo-Noir", weapon: "M4A4", rarity: null }],
+    items: [{ id: "skin-3", name: "M4A4 | Neo-Noir", weapon: "M4A4", rarity: null, image: null }],
     total: 1,
   }), {
-    items: [{ id: "skin-3", name: "M4A4 | Neo-Noir", weapon: "M4A4", rarity: null }],
+    items: [{ id: "skin-3", name: "M4A4 | Neo-Noir", weapon: "M4A4", rarity: null, image: null }],
     total: 1,
   });
   assert.equal(parseCataloguePage({
-    items: [{ id: "skin-3", name: "Missing weapon", rarity: null }],
+    items: [{ id: "skin-3", name: "Missing weapon", rarity: null, image: null }],
+    total: 1,
+  }), null);
+  assert.equal(parseCataloguePage({
+    items: [{ id: "skin-3", name: "Missing image", weapon: "M4A4", rarity: null }],
     total: 1,
   }), null);
 });

@@ -5,6 +5,7 @@ export interface PublicSkin {
   name: string;
   weapon: string;
   rarity: string | null;
+  image: string | null;
 }
 
 export interface CataloguePage {
@@ -55,6 +56,7 @@ export function parsePublicSkin(value: unknown): PublicSkin | null {
     || typeof value.name !== "string"
     || typeof value.weapon !== "string"
     || (value.rarity !== null && typeof value.rarity !== "string")
+    || (value.image !== null && typeof value.image !== "string")
   ) {
     return null;
   }
@@ -64,6 +66,7 @@ export function parsePublicSkin(value: unknown): PublicSkin | null {
     name: value.name,
     weapon: value.weapon,
     rarity: value.rarity,
+    image: value.image,
   };
 }
 
